@@ -27,11 +27,11 @@ MODULE_DESCRIPTION("This module implements a reference monitor that deny the ope
 
 
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
-#define target_func "__x64_sys_filp_open" 
-#else
-#define target_func "sys_filp_open" 
-#endif
+//#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
+#define  target_func "__x64_sys_open"
+//#else
+//#define target_func "sys_open" 
+//#endif
 
 
 //reference monitor parametres
@@ -41,9 +41,9 @@ char *monitor_mode = "ON";
 char *black_list[] = {NULL}; //the list of files not to open in write mode
 
 
-static int filp_open_wrapper(struct kprobe *ri, struct pt_regs *regs){
+static int sys_open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	
-	printk("%s: filp_open intercepted.", MODNAME);	
+	printk("%s: open intercepted.", MODNAME);	
 	
 	return 0;
 
@@ -51,7 +51,7 @@ static int filp_open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 
 static struct kprobe kp = {
         .symbol_name =  target_func,
-        .pre_handler = filp_open_wrapper,
+        .pre_handler = sys_open_wrapper,
 };
 
 int init_module(void) {
@@ -62,12 +62,21 @@ int init_module(void) {
 
 	ret = register_kprobe(&kp);
         if (ret < 0) {
-                printk("%s: jprobe registering failed, returned %d\n",MODNAME,ret);
+                printk("%s: kprobe registering failed, returned %d\n",MODNAME,ret);
                 return ret;
         }
 
 	ret = 0;
 
 	return ret;
+}
+
+
+void cleanup_module(void) {
+ 
+        printk("%s: shutting down\n",MODNAME);
+        unregister_kprobe(&kp);
+
+        
 }
 
