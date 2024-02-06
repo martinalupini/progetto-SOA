@@ -19,7 +19,7 @@
 #include <asm/apic.h>
 #include <linux/syscalls.h>
 
-#define MODNAME "Reference monitor"
+#define MODNAME "Reference monitor filp_open"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Martina Lupini");
@@ -33,28 +33,26 @@ MODULE_DESCRIPTION("This module implements a reference monitor that deny the ope
 #define target_func "sys_filp_open" 
 #endif
 
-enum status = {ON, OFF, REC-ON, REC-OFF};
 
 //reference monitor parametres
 
-char pass = "prova" //TO DO: SALVARE CIFRATA
-enum status monitor_mode = ON;
-
-static struct jprobe jp = {
-	.entry			= filp_open_wrapper,
-	.kp = {
-		.symbol_name	= target_func,
-	},
-};
-
+char *pass = "prova"; //TO DO: SALVARE CIFRATA
+char *monitor_mode = "ON";
 char *black_list[] = {NULL}; //the list of files not to open in write mode
 
 
-extern struct file *filp_open_wrapper(const char *, int, umode_t){
+static int filp_open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	
-	printk("%s: filp_open intercepted", MODNAME);	
+	printk("%s: filp_open intercepted.", MODNAME);	
+	
+	return 0;
 
 }
+
+static struct kprobe kp = {
+        .symbol_name =  target_func,
+        .pre_handler = filp_open_wrapper,
+};
 
 int init_module(void) {
 
