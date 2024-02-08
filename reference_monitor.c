@@ -68,13 +68,13 @@ __SYSCALL_DEFINEx(1, _start_monitor, char *, pass){
 
 	printk("%s: called sys_start_monitor", MODNAME);
 	
-	if(
+	/*
 	
 	spin_lock(&(monitor.lock));
 	
 	
 	
-	spin_unlock(&(monitor.lock));
+	spin_unlock(&(monitor.lock));*/
 	return 0;
 }
 
