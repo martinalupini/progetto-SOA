@@ -114,13 +114,68 @@ static int mkdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
 
 }
 
+static int rmdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
+	
+	printk("%s: rmdir intercepted.", MODNAME);	
+	
+	return 0;
+
+}
+
+
+static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
+	
+	printk("%s: open intercepted.", MODNAME);	
+	
+	return 0;
+
+}
+
+static int link_wrapper(struct kprobe *ri, struct pt_regs *regs){
+	
+	printk("%s: link intercepted.", MODNAME);	
+	
+	return 0;
+
+}
+
+
+static int unlink_wrapper(struct kprobe *ri, struct pt_regs *regs){
+	
+	printk("%s: unlink intercepted.", MODNAME);	
+	
+	return 0;
+
+}
+
+
+
 //kprobes////////////////////////////////////////////////////
 static struct kprobe kp_mkdir = {
-        .symbol_name =  "__x64_sys_mkdir",
+        .symbol_name =  "do_mkdirat",
         .pre_handler = mkdir_wrapper,
 };
 
+static struct kprobe kp_rmdir = {
+        .symbol_name =  "do_rmdirat",
+        .pre_handler = rmdir_wrapper,
+};
 
+static struct kprobe kp_open = {
+        .symbol_name =  "do_filp_open",
+        .pre_handler = open_wrapper,
+};
+
+
+static struct kprobe kp_unlink = {
+        .symbol_name =  "do_unlinkat",
+        .pre_handler = unlink_wrapper,
+};
+
+static struct kprobe kp_link = {
+        .symbol_name =  "do_linkat",
+        .pre_handler = link_wrapper,
+};
 //initialization module//////////////////////////////////////
 int init_module(void) {
 	int i;
@@ -181,14 +236,37 @@ int init_module(void) {
 	//registering kprobes
 	ret = register_kprobe(&kp_mkdir);
         if (ret < 0) {
-                printk("%s: kprobe registering failed, returned %d\n",MODNAME,ret);
+                printk("%s: kprobe mkdir registering failed, returned %d\n",MODNAME,ret);
+                return ret;
+        }
+        
+        ret = register_kprobe(&kp_open);
+        if (ret < 0) {
+                printk("%s: kprobe open registering failed, returned %d\n",MODNAME,ret);
+                return ret;
+        }
+        
+        ret = register_kprobe(&kp_link);
+        if (ret < 0) {
+                printk("%s: kprobe link registering failed, returned %d\n",MODNAME,ret);
                 return ret;
         }
 
-	ret = 0;
+	ret = register_kprobe(&kp_rmdir);
+        if (ret < 0) {
+                printk("%s: kprobe rmdir registering failed, returned %d\n",MODNAME,ret);
+                return ret;
+        }
+        
+        ret = register_kprobe(&kp_unlink);
+        if (ret < 0) {
+                printk("%s: kprobe unlink registering failed, returned %d\n",MODNAME,ret);
+                return ret;
+        }
 	
 	printk("%s: kprobes installed", MODNAME);
 
+	ret = 0;
 	return ret;
 }
 
@@ -209,6 +287,10 @@ void cleanup_module(void) {
         
         //unregistering kprobes
         unregister_kprobe(&kp_mkdir);
+        unregister_kprobe(&kp_open);
+        unregister_kprobe(&kp_rmdir);
+        unregister_kprobe(&kp_link);
+        unregister_kprobe(&kp_unlink);
         printk("%s: kprobes unregistered\n", MODNAME);
 
         
