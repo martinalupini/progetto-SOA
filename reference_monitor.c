@@ -60,8 +60,16 @@ unsigned long new_sys_call_array[4];
 #define HACKED_ENTRIES (int)(sizeof(new_sys_call_array)/sizeof(unsigned long))
 int restore[HACKED_ENTRIES] = {[0 ... (HACKED_ENTRIES-1)] -1};
 #define AUDIT if(1)
+#define MAXSIZE 256
 
 
+struct open_flag {
+	int open_flag;
+	umode_t mode;
+	int acc_mode;
+	int intent;
+	int lookup_flags;
+};
 
 
 __SYSCALL_DEFINEx(1, _start_monitor, char *, pass){
@@ -106,6 +114,50 @@ long sys_stop_monitor = (unsigned long) __x64_sys_stop_monitor;
 long sys_monitor_recon = (unsigned long) __x64_sys_monitor_recon; 
 long sys_monitor_recoff = (unsigned long) __x64_sys_monitor_recoff; 
 //pre-handlers////////////////////////////////////////////////
+
+
+int control_flag(int flag){
+	int ret, ret1;
+	
+	ret = (flag & O_RDWR) ^ (O_RDWR);
+	ret1 = (flag & O_WRONLY) ^ (O_WRONLY);
+
+	return ret | ret1;
+}
+
+
+int is_creating(int flag){
+	int ret = (flag & O_CREAT) ^ O_CREAT;
+	return ret;
+}
+
+char *find_dir(char *path){
+
+	int i= strlen(path)-1;
+	char *new_string = kmalloc(strlen(path), GFP_KERNEL);
+	
+	while(i>=0){
+		
+		if(path[i] != '/'){ 
+			new_string[i] = '\0'; 
+		}
+		else{
+			new_string[i]='\0';
+			i--;
+		 	break;
+		}
+		i--;
+
+	}
+	
+	while(i>=0){
+		new_string[i] = path[i];
+		i--;
+	}
+	
+	return new_string;
+}
+
 static int mkdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	
 	printk("%s: mkdir intercepted.", MODNAME);	
@@ -124,9 +176,38 @@ static int rmdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
 
 
 static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
+	int i=-1;
+	char *dir;
+	char *path = ((struct filename *)(regs->si))->name; //arg1
+	int flags = ((struct open_flag *)(regs->dx))->open_flag; //arg2
+	//printk("%s: open intercepted: file is %s and flags are %d",MODNAME, path, flags);
 	
-	printk("%s: open intercepted.", MODNAME);	
+	//checking if the file is protected 
+	for(i=0; monitor.file_protected[i] != NULL; i++){
+		if(strcmp(monitor.file_protected[i], path) == 0 && control_flag(flags) == 0){
+			printk("%s: current file cannot be opened in write mode: open rejected\n",MODNAME);
+			goto reject;
+		}
+	}
+		
+	//checking if creating a file in a protected directory
+	dir = find_dir(path);
+	for(i=0; monitor.dir_protected[i] != NULL; i++){
+		if(strcmp(monitor.dir_protected[i], dir) == 0 && is_creating(flags) == 0){
+			printk("%s: current file cannot be created because directory %s cannot be written: create rejected\n",MODNAME, dir);
+			goto reject;
+		
+		}
+	}
 	
+	
+	
+	return 0;
+	
+reject:
+	regs->di = (unsigned long)NULL;
+	regs->si = (unsigned long)NULL;
+	regs->dx = (unsigned long)NULL;
 	return 0;
 
 }
@@ -152,12 +233,12 @@ static int unlink_wrapper(struct kprobe *ri, struct pt_regs *regs){
 
 //kprobes////////////////////////////////////////////////////
 static struct kprobe kp_mkdir = {
-        .symbol_name =  "do_mkdirat",
+        .symbol_name =  "__x64_sys_mkdir",
         .pre_handler = mkdir_wrapper,
 };
 
 static struct kprobe kp_rmdir = {
-        .symbol_name =  "do_rmdirat",
+        .symbol_name =  "__x64_sys_rmdir",
         .pre_handler = rmdir_wrapper,
 };
 
@@ -168,25 +249,28 @@ static struct kprobe kp_open = {
 
 
 static struct kprobe kp_unlink = {
-        .symbol_name =  "do_unlinkat",
+        .symbol_name =  "__x64_sys_unlink",
         .pre_handler = unlink_wrapper,
 };
 
 static struct kprobe kp_link = {
-        .symbol_name =  "do_linkat",
+        .symbol_name =  "__x64_sys_link",
         .pre_handler = link_wrapper,
 };
 //initialization module//////////////////////////////////////
 int init_module(void) {
 	int i;
 	int ret;
+	char *file[MAXSIZE];
+	char *dir[MAXSIZE];
 	
 	printk("%s: initializing\n",MODNAME);
 	
 	monitor.pass = "prova";
 	monitor.monitor_mode = "ON";
-	char *file[]={NULL};
-	char *dir[]= {NULL};
+	file[0] = "/home/martina/Desktop/progetto-SOA/file";
+	file[1] = NULL;
+	dir[0]= NULL;
 	monitor.file_protected = file;
 	monitor.dir_protected = dir;
 	spin_lock_init(&(monitor.lock));
