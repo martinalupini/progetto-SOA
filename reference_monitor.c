@@ -180,15 +180,13 @@ static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	char *dir;
 	char *path = ((struct filename *)(regs->si))->name; //arg1
 	int flags = ((struct open_flag *)(regs->dx))->open_flag; //arg2
-	char run[5];
+	char run[5]; 
 	
 	strncpy(run, path, 4);
-	run[5]='\0';
+	run[4]='\0';
 	
-	if( strcmp(run, "/run") ==0 ) {
-		printk("Equals");
-		return 0;
-	}
+	
+	if( strcmp(run, "/run") ==0 ) return 0;
 	
 	//checking if the file is protected 
 	printk("%s: open intercepted: file is %s and flags are %d",MODNAME, path, flags);
