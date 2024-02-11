@@ -60,7 +60,7 @@ unsigned long new_sys_call_array[4];
 #define HACKED_ENTRIES (int)(sizeof(new_sys_call_array)/sizeof(unsigned long))
 int restore[HACKED_ENTRIES] = {[0 ... (HACKED_ENTRIES-1)] -1};
 #define AUDIT if(1)
-#define MAXSIZE 256
+#define MAXSIZE 32
 
 
 struct open_flag {
@@ -180,9 +180,20 @@ static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	char *dir;
 	char *path = ((struct filename *)(regs->si))->name; //arg1
 	int flags = ((struct open_flag *)(regs->dx))->open_flag; //arg2
-	//printk("%s: open intercepted: file is %s and flags are %d",MODNAME, path, flags);
+	char run[5];
+	
+	strncpy(run, path, 4);
+	run[5]='\0';
+	
+	if( strcmp(run, "/run") ==0 ) {
+		printk("Equals");
+		return 0;
+	}
 	
 	//checking if the file is protected 
+	printk("%s: open intercepted: file is %s and flags are %d",MODNAME, path, flags);
+	
+	/*
 	for(i=0; monitor.file_protected[i] != NULL; i++){
 		if(strcmp(monitor.file_protected[i], path) == 0 && control_flag(flags) == 0){
 			printk("%s: current file cannot be opened in write mode: open rejected\n",MODNAME);
@@ -208,6 +219,7 @@ reject:
 	regs->di = (unsigned long)NULL;
 	regs->si = (unsigned long)NULL;
 	regs->dx = (unsigned long)NULL;
+	*/
 	return 0;
 
 }
