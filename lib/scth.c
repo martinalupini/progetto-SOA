@@ -54,7 +54,7 @@ MODULE_DESCRIPTION("system call table hacker");
 #define AUDIT if(1)
 #define LEVEL3_AUDIT if(0)
 
-#define MAX_ACQUIRES 4
+#define MAX_ACQUIRES 8
 
 
 //stuff for sys cal table hacking

@@ -34,28 +34,3 @@ remove:
 	rm dir.o
 	rm file.o
 	rmdir mount
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	

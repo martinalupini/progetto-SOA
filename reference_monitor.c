@@ -29,12 +29,16 @@ MODULE_DESCRIPTION("This module implements a reference monitor that deny the ope
 
 //reference monitor//////////////////////////////////////////
 
+enum {ON, OFF, RECON, RECOFF};
+
+
 typedef struct ref_monitor {
 	char *pass;
-	char *monitor_mode;
-	char **file_protected;
-	char **dir_protected;
+	int monitor_mode;
+	char **path_protected;
+	int last_path;
 	spinlock_t lock;
+	struct file *file;
 	
 } monitor_t;
 
@@ -47,16 +51,20 @@ int entry1=0;
 int entry2=0;
 int entry3=0;
 int entry4=0;
+int entry5=0;
+int entry6=0;
 
 module_param(the_syscall_table, ulong, 0660);
 module_param(entry1, int, 0660);
 module_param(entry2, int, 0660);
 module_param(entry3, int, 0660);
 module_param(entry4, int, 0660);
+module_param(entry5, int, 0660);
+module_param(entry6, int, 0660);
 
 unsigned long the_ni_syscall;
 
-unsigned long new_sys_call_array[4];
+unsigned long new_sys_call_array[6];
 #define HACKED_ENTRIES (int)(sizeof(new_sys_call_array)/sizeof(unsigned long))
 int restore[HACKED_ENTRIES] = {[0 ... (HACKED_ENTRIES-1)] -1};
 #define AUDIT if(1)
@@ -92,27 +100,39 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char *, pass){
 	return 0;
 }
 
-__SYSCALL_DEFINEx(2, _monitor_recon, char *, pass, const char __user *, path){
+__SYSCALL_DEFINEx(1, _monitor_recon, char *, pass){
 	
 	printk("%s: called sys_monitor_recon", MODNAME);
 	return 0;
 }
 
-__SYSCALL_DEFINEx(2, _monitor_recoff, char *, pass, const char __user *, path){
+__SYSCALL_DEFINEx(1, _monitor_recoff, char *, pass, const char __user *, path){
 	
 	printk("%s: called sys_monitor_recoff", MODNAME);
 	return 0;
 }
 
 
+__SYSCALL_DEFINEx(1, _add_path, const char __user *, path){
+	
+	printk("%s: called sys_add_path", MODNAME);
+	return 0;
+}
 
 
+__SYSCALL_DEFINEx(1, _remove_path, const char __user *, path){
+	
+	printk("%s: called sys_remove_path", MODNAME);
+	return 0;
+}
 
 
 long sys_start_monitor = (unsigned long) __x64_sys_start_monitor; 
 long sys_stop_monitor = (unsigned long) __x64_sys_stop_monitor; 
 long sys_monitor_recon = (unsigned long) __x64_sys_monitor_recon; 
 long sys_monitor_recoff = (unsigned long) __x64_sys_monitor_recoff; 
+long sys_add_path = (unsigned long) __x64_sys_add_path;
+long sys_remove_path = (unsigned long) __x64_sys_remove_path;
 //pre-handlers////////////////////////////////////////////////
 
 
@@ -123,57 +143,6 @@ int control_flag(int flag){
 	ret1 = (flag & O_WRONLY) ^ (O_WRONLY);
 
 	return ret | ret1;
-}
-
-
-int is_creating(int flag){
-	int ret = (flag & O_CREAT) ^ O_CREAT;
-	return ret;
-}
-
-char *find_dir(char *path){
-
-	int i= strlen(path)-1;
-	char *new_string = kmalloc(strlen(path), GFP_KERNEL);
-	
-	while(i>=0){
-		
-		if(path[i] != '/'){ 
-			new_string[i] = '\0'; 
-		}
-		else{
-			new_string[i]='\0';
-			i--;
-		 	break;
-		}
-		i--;
-
-	}
-	
-	while(i>=0){
-		new_string[i] = path[i];
-		i--;
-	}
-	
-	return new_string;
-}
-
-static int mkdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
-	int dfd = (int)(regs->di);
-	struct file *file = fget(dfd);
-	char *dir =((file->f_path).dentry->d_parent->d_name).name;
-	printk("%s: mkdir intercepted. Creating directory in %s.", MODNAME, dir);	
-	
-	return 0;
-
-}
-
-static int rmdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
-	
-	printk("%s: rmdir intercepted.", MODNAME);	
-	
-	return 0;
-
 }
 
 
@@ -205,7 +174,7 @@ static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	//checking if the file is protected 
 	printk("%s: open intercepted: file is %s in dir %s and flags are %d",MODNAME, path, dir,  flags);
 	
-	/*
+	
 	for(i=0; monitor.file_protected[i] != NULL; i++){
 		if(strcmp(monitor.file_protected[i], path) == 0 && control_flag(flags) == 0){
 			printk("%s: current file cannot be opened in write mode: open rejected\n",MODNAME);
@@ -214,7 +183,7 @@ static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	}
 		
 	//checking if creating a file in a protected directory
-	/*
+	
 	dir = find_dir(path);
 	for(i=0; monitor.dir_protected[i] != NULL; i++){
 		if(strcmp(monitor.dir_protected[i], dir) == 0 && is_creating(flags) == 0){
@@ -239,35 +208,9 @@ reject:
 
 }
 
-static int link_wrapper(struct kprobe *ri, struct pt_regs *regs){
-	
-	printk("%s: link intercepted.", MODNAME);	
-	
-	return 0;
-
-}
-
-
-static int unlink_wrapper(struct kprobe *ri, struct pt_regs *regs){
-	
-	printk("%s: unlink intercepted.", MODNAME);	
-	
-	return 0;
-
-}
-
 
 
 //kprobes////////////////////////////////////////////////////
-static struct kprobe kp_mkdir = {
-        .symbol_name =  "do_mkdirat",
-        .pre_handler = mkdir_wrapper,
-};
-
-static struct kprobe kp_rmdir = {
-        .symbol_name =  "__x64_sys_rmdir",
-        .pre_handler = rmdir_wrapper,
-};
 
 static struct kprobe kp_open = {
         .symbol_name =  "do_filp_open",
@@ -275,35 +218,28 @@ static struct kprobe kp_open = {
 };
 
 
-static struct kprobe kp_unlink = {
-        .symbol_name =  "__x64_sys_unlink",
-        .pre_handler = unlink_wrapper,
-};
-
-static struct kprobe kp_link = {
-        .symbol_name =  "__x64_sys_link",
-        .pre_handler = link_wrapper,
-};
 //initialization module//////////////////////////////////////
 int init_module(void) {
 	int i;
 	int ret;
-	char *file[MAXSIZE];
-	char *dir[MAXSIZE];
+	char *path[MAXSIZE];
 	
 	printk("%s: initializing\n",MODNAME);
 	
 	monitor.pass = "prova";
-	monitor.monitor_mode = "ON";
-	file[0] = "/home/martina/Desktop/progetto-SOA/file";
-	file[1] = NULL;
-	dir[0]= NULL;
-	monitor.file_protected = file;
-	monitor.dir_protected = dir;
+	monitor.monitor_mode = ON;
+	path[0] = "/home/martina/Desktop/progetto-SOA/file";
+	path[1] = NULL;
+	monitor.path_protected = path;
+	monitor.last_path = 2;
 	spin_lock_init(&(monitor.lock));
 	
+	//opening file of custom filesystem//////////////////////////////////////
 	
-	//installing system calls
+	monitor.file = filp_open("singlefile-FS/mount/the-file", O_RDWR, 0);
+	printk("%s: opened file %s", MODNAME, monitor.file->f_path.dentry->d_iname);
+	
+	//installing system calls//////////////////////////////////////////////////
 	if (the_syscall_table == 0x0){
 	   printk("%s: cannot manage sys_call_table address set to 0x0\n",MODNAME);
 	   return -1;
@@ -316,6 +252,8 @@ int init_module(void) {
 	new_sys_call_array[1] = (unsigned long)sys_stop_monitor;
 	new_sys_call_array[2] = (unsigned long)sys_monitor_recon;
 	new_sys_call_array[3] = (unsigned long)sys_monitor_recoff;
+	new_sys_call_array[4] = (unsigned long)sys_add_path;
+	new_sys_call_array[5] = (unsigned long)sys_remove_path;
 	
 
         ret = get_entries(restore,HACKED_ENTRIES,(unsigned long*)the_syscall_table,&the_ni_syscall);
@@ -338,40 +276,18 @@ int init_module(void) {
 	entry2 = restore[1];
 	entry3 = restore[2];
 	entry4 = restore[3];
+	entry5 = restore[4];
+	entry6 = restore[5];
 
         printk("%s: all new system-calls correctly installed on sys-call table\n",MODNAME);
 	
 
 
 
-	//registering kprobes
-	ret = register_kprobe(&kp_mkdir);
-        if (ret < 0) {
-                printk("%s: kprobe mkdir registering failed, returned %d\n",MODNAME,ret);
-                return ret;
-        }
-        
+	//registering kprobes//////////////////////////////////////////////////////////////
         ret = register_kprobe(&kp_open);
         if (ret < 0) {
                 printk("%s: kprobe open registering failed, returned %d\n",MODNAME,ret);
-                return ret;
-        }
-        
-        ret = register_kprobe(&kp_link);
-        if (ret < 0) {
-                printk("%s: kprobe link registering failed, returned %d\n",MODNAME,ret);
-                return ret;
-        }
-
-	ret = register_kprobe(&kp_rmdir);
-        if (ret < 0) {
-                printk("%s: kprobe rmdir registering failed, returned %d\n",MODNAME,ret);
-                return ret;
-        }
-        
-        ret = register_kprobe(&kp_unlink);
-        if (ret < 0) {
-                printk("%s: kprobe unlink registering failed, returned %d\n",MODNAME,ret);
                 return ret;
         }
 	
@@ -397,11 +313,8 @@ void cleanup_module(void) {
         
         
         //unregistering kprobes
-        unregister_kprobe(&kp_mkdir);
         unregister_kprobe(&kp_open);
-        unregister_kprobe(&kp_rmdir);
-        unregister_kprobe(&kp_link);
-        unregister_kprobe(&kp_unlink);
+        
         printk("%s: kprobes unregistered\n", MODNAME);
 
         

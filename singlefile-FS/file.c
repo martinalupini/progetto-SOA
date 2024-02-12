@@ -161,7 +161,7 @@ const struct inode_operations onefilefs_inode_ops = {
 
 const struct file_operations onefilefs_file_operations = {
     .owner = THIS_MODULE,
-    .llseek = generic_file_llseek,
+    .llseek = default_llseek,
     .read = onefilefs_read,
     .write = onefilefs_write, 
 };
