@@ -159,8 +159,10 @@ char *find_dir(char *path){
 }
 
 static int mkdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
-	
-	printk("%s: mkdir intercepted.", MODNAME);	
+	int dfd = (int)(regs->di);
+	struct file *file = fget(dfd);
+	char *dir =((file->f_path).dentry->d_parent->d_name).name;
+	printk("%s: mkdir intercepted. Creating directory in %s.", MODNAME, dir);	
 	
 	return 0;
 
@@ -176,20 +178,32 @@ static int rmdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
 
 
 static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
+
+	/*
 	int i=-1;
-	char *dir;
-	char *path = ((struct filename *)(regs->si))->name; //arg1
+	
+	int dfd = (int)(regs->di); //arg0
+	//char *path = ((struct filename *)(regs->si))->name; //arg1
 	int flags = ((struct open_flag *)(regs->dx))->open_flag; //arg2
 	char run[5]; 
+	
+	
+	struct file *file = fget(dfd);
+	char *path = ((file->f_path).dentry->d_name).name; 
+	char *dir =((file->f_path).dentry->d_parent->d_name).name;
+	
+	//path = d_path(&file->f_path, tmp, PAGE_SIZE);
 	
 	strncpy(run, path, 4);
 	run[4]='\0';
 	
 	
-	if( strcmp(run, "/run") ==0 ) return 0;
+	if( strcmp(run, "/run") ==0 ){
+		 return 0;
+	}
 	
 	//checking if the file is protected 
-	printk("%s: open intercepted: file is %s and flags are %d",MODNAME, path, flags);
+	printk("%s: open intercepted: file is %s in dir %s and flags are %d",MODNAME, path, dir,  flags);
 	
 	/*
 	for(i=0; monitor.file_protected[i] != NULL; i++){
@@ -200,6 +214,7 @@ static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
 	}
 		
 	//checking if creating a file in a protected directory
+	/*
 	dir = find_dir(path);
 	for(i=0; monitor.dir_protected[i] != NULL; i++){
 		if(strcmp(monitor.dir_protected[i], dir) == 0 && is_creating(flags) == 0){
@@ -217,7 +232,9 @@ reject:
 	regs->di = (unsigned long)NULL;
 	regs->si = (unsigned long)NULL;
 	regs->dx = (unsigned long)NULL;
+	
 	*/
+	
 	return 0;
 
 }
@@ -243,7 +260,7 @@ static int unlink_wrapper(struct kprobe *ri, struct pt_regs *regs){
 
 //kprobes////////////////////////////////////////////////////
 static struct kprobe kp_mkdir = {
-        .symbol_name =  "__x64_sys_mkdir",
+        .symbol_name =  "do_mkdirat",
         .pre_handler = mkdir_wrapper,
 };
 
