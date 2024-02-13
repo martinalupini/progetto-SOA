@@ -48,73 +48,40 @@ monitor_t monitor;
 //pre-handlers////////////////////////////////////////////////
 
 
-int control_flag(int flag){
-	int ret, ret1;
+static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
-	ret = (flag & O_RDWR) ^ (O_RDWR);
-	ret1 = (flag & O_WRONLY) ^ (O_WRONLY);
-
-	return ret | ret1;
-}
-
-
-static int open_wrapper(struct kprobe *ri, struct pt_regs *regs){
-
-	/*
 	int i=-1;
 	
 	int dfd = (int)(regs->di); //arg0
-	//char *path = ((struct filename *)(regs->si))->name; //arg1
+	char *path = ((struct filename *)(regs->si))->name; //arg1
 	int flags = ((struct open_flag *)(regs->dx))->open_flag; //arg2
+	
+	
 	char run[5]; 
-	
-	
-	struct file *file = fget(dfd);
-	char *path = ((file->f_path).dentry->d_name).name; 
-	char *dir =((file->f_path).dentry->d_parent->d_name).name;
-	
-	//path = d_path(&file->f_path, tmp, PAGE_SIZE);
-	
 	strncpy(run, path, 4);
 	run[4]='\0';
-	
-	
 	if( strcmp(run, "/run") ==0 ){
 		 return 0;
 	}
 	
+	
 	//checking if the file is protected 
-	printk("%s: open intercepted: file is %s in dir %s and flags are %d",MODNAME, path, dir,  flags);
+	printk("%s: open intercepted: file is %s and flags are %d\n",MODNAME, path, flags);
 	
 	
-	for(i=0; monitor.file_protected[i] != NULL; i++){
-		if(strcmp(monitor.file_protected[i], path) == 0 && control_flag(flags) == 0){
-			printk("%s: current file cannot be opened in write mode: open rejected\n",MODNAME);
+	for(i=0; i<monitor.last_path ; i++){
+		if(strcmp(monitor.path[i], path) == 0 &&  !(flag & O_RDWR) && !(flag & O_WRONLY)){
+			printk("%s: Current path cannot be opened in write mode: open rejected\n",MODNAME);
 			goto reject;
 		}
 	}
-		
-	//checking if creating a file in a protected directory
-	
-	dir = find_dir(path);
-	for(i=0; monitor.dir_protected[i] != NULL; i++){
-		if(strcmp(monitor.dir_protected[i], dir) == 0 && is_creating(flags) == 0){
-			printk("%s: current file cannot be created because directory %s cannot be written: create rejected\n",MODNAME, dir);
-			goto reject;
-		
-		}
-	}
-	
-	
-	
+
 	return 0;
 	
 reject:
 	regs->di = (unsigned long)NULL;
 	regs->si = (unsigned long)NULL;
 	regs->dx = (unsigned long)NULL;
-	
-	*/
 	
 	return 0;
 
@@ -126,7 +93,7 @@ reject:
 
 static struct kprobe kp_open = {
         .symbol_name =  "do_filp_open",
-        .pre_handler = open_wrapper,
+        .pre_handler = open_pre_handler,
 };
 
 
