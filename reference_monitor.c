@@ -75,13 +75,13 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	
 	char run[5]; 
-	strncpy(run, user_path, 4);
+	strncpy(run, real_path, 4);
 	run[4]='\0';
 	if( strcmp(run, "/run") ==0 ){
 		 return 0;
 	}
 	
-	printk("%s: open intercepted: file is %s and flags are %d\n",MODNAME, user_path, flags);
+	printk("%s: open intercepted: file is %s and flags are %d\n",MODNAME, real_path, flags);
 	
 	//checking if file is open in write mode
 	if(!(flags & O_RDWR) && !(flags & O_WRONLY))  return 0;
@@ -89,7 +89,7 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	//obtaining full path
 	tpath=kmalloc(1024,GFP_KERNEL);
-	if(path == NULL){
+	if(user_path == NULL){
 		 path = real_path;
 	}else{
 		if (!(flag & AT_SYMLINK_NOFOLLOW))
