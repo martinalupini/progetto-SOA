@@ -40,24 +40,26 @@ int main (int argc, char *argv[]) {
 
 	int fd;
 	int i;
+	char *buffer = malloc(256);
 
-	/*
-	fd=open("/home/martina/Desktop/progetto-SOA/file", O_RDWR);
+	for(i=0; i<6; i++){
+		syscall_entry[i]= atoi(argv[i+1]);
+		printf("%d\n", syscall_entry[i]);
+	}
+
+	
+	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDWR);
 	if (fd== -1) {
 		perror("Open error: ");
 		exit(-2);
 	}
 
-	write(fd,string,strlen(string));
-	*/
+	read(fd,buffer,256);
 	
-	for(i=0; i<6; i++){
-		syscall_entry[i]= atoi(argv[i+1]);
-		printf("%d\n", syscall_entry[i]);
-	}
+	printf("%s\n", buffer);
 	
-	printf("il confronto ha come risultato %d\n", strcmp("/home/martina/Desktop", "/home/martina/Desktop/file"));
-
+	
+	/*
 	i =stop_monitor("prova");
 	if(i<0) printf("error\n");
 	start_monitor("prova");
@@ -78,7 +80,7 @@ int main (int argc, char *argv[]) {
 	i = stop_monitor("prova");
 	if(i<0){
 		printf("Not root user or wrong password\n");
-	}
+	}*/
 	
 	return 0;
 }

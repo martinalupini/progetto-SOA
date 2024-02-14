@@ -70,9 +70,9 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	int dfd = (int)(regs->di); //arg0
 	const __user char *user_path = ((struct filename *)(regs->si))->uptr; //arg1
 	const char *real_path = ((struct filename *)(regs->si))->name;
-	int flags = ((struct open_flag *)(regs->dx))->open_flag; //arg2
+	struct open_flag *op_flag = (struct open_flag *)(regs->dx); //arg2
+	int flags = op_flag->open_flag;
 
-	
 	
 	char run[5]; 
 	strncpy(run, real_path, 4);
@@ -81,29 +81,28 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 		 return 0;
 	}
 	
-	printk("%s: open intercepted: file is %s and flags are %d\n",MODNAME, real_path, flags);
-	
+
 	//checking if file is open in write mode
 	if(!(flags & O_RDWR) && !(flags & O_WRONLY))  return 0;
-	
 	
 	//obtaining full path
 	tpath=kmalloc(1024,GFP_KERNEL);
 	if(user_path == NULL){
 		 path = real_path;
 	}else{
-		if (!(flag & AT_SYMLINK_NOFOLLOW))
-    			lookup_flags |= LOOKUP_FOLLOW;
+		if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
 		error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
 		path = d_path(&path_struct, tpath, 1024);
-		printk("complete path is %s\n",path);
+		if(path == NULL) path = real_path;
 	}
 	kfree(tpath);
 	
+	printk("%s: open in write mode intercepted: file is %s\n",MODNAME, path);
+
 	//if open in write mode checking if its protected
 	for(i=0; i<monitor.last_path ; i++){
 		if(strcmp(monitor.path[i], path) == 0){
-			printk("%s: Current path cannot be opened in write mode: open rejected\n",MODNAME);
+			printk("%s: Current path cannot be opened in write mode. Open in read mode only.\n",MODNAME);
 			goto reject;
 		}
 	}
@@ -111,9 +110,9 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	return 0;
 	
 reject:
-	regs->di = (unsigned long)NULL;
-	regs->si = (unsigned long)NULL;
-	regs->dx = (unsigned long)NULL;
+	//the filp_open is executed but with flag 0_RDONLY. Any attempt to write will return an error.
+	op_flag->open_flag = ((flags & O_WRONLY) & O_RDWR) | O_RDONLY;
+	regs->dx = (unsigned long)op_flag;
 	
 	return 0;
 
@@ -430,7 +429,7 @@ int init_module(void) {
 	
 	monitor.pass = "prova";
 	monitor.mode = ON;
-	monitor.path[0] = "Makefile";
+	monitor.path[0] = "/home/martina/Desktop/progetto-SOA/user/file.txt";
 	monitor.last_path = 1;
 	spin_lock_init(&(monitor.lock));
 	
@@ -513,12 +512,8 @@ void cleanup_module(void) {
         //unregistering kprobes
         unregister_kprobe(&kp_open);
         printk("%s: kprobes unregistered\n", MODNAME);
-        
-        //freeing kernel memory
-        for(i=0; monitor.path[i]!= NULL; i++){
-        	kfree(monitor.path[i]);
-        }
+       
         printk("%s: Module correctly removed\n", MODNAME);
-        
+            
 }
 
