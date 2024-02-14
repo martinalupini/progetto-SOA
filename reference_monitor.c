@@ -46,8 +46,33 @@ typedef struct ref_monitor {
 
 monitor_t monitor;
 
+
+//deferred work struct and function///////////////////////////
+
+typedef struct _packed_work{
+        pid_t tgid;
+        pid_t pid;
+        uid_t uid;
+        uid_t euid;
+        char comm[64];
+        struct work_struct the_work;
+} packed_work;
+
+
+void register_access(unsigned long input){
+	packed_work *data = (void*)container_of((void*)input,packed_work,the_work);
+
+	printk("%s: Information about program:\nTGID: %d\nPID: %d\nUID: %d\nEUID: %d\nProgram name: %s\n",MODNAME, data->tgid, data->pid, data->uid, data->euid, data->comm);
+	
+
+}
+
+
+
+
 //pre-handlers////////////////////////////////////////////////
-struct open_flag {
+struct open_flags {
+	void* buffer;
 	int open_flag;
 	umode_t mode;
 	int acc_mode;
@@ -60,6 +85,7 @@ struct open_flag {
 static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	int i=-1;
+	packed_work *the_task;
 	
 	struct path path_struct;
 	char *tpath;
@@ -70,7 +96,7 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	int dfd = (int)(regs->di); //arg0
 	const __user char *user_path = ((struct filename *)(regs->si))->uptr; //arg1
 	const char *real_path = ((struct filename *)(regs->si))->name;
-	struct open_flag *op_flag = (struct open_flag *)(regs->dx); //arg2
+	struct open_flags *op_flag = (struct open_flags *)(regs->dx); //arg2
 	int flags = op_flag->open_flag;
 
 	
@@ -92,6 +118,12 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	}else{
 		if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
 		error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
+		if(error){
+			printk("%s: File %s does not exist\n", MODNAME, user_path);
+			kfree(tpath);
+			return 0;
+		}
+			
 		path = d_path(&path_struct, tpath, 1024);
 		if(path == NULL) path = real_path;
 	}
@@ -110,6 +142,21 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	return 0;
 	
 reject:
+	
+	//registering deferred work
+	the_task = kzalloc(sizeof(packed_work),GFP_KERNEL);
+	the_task->tgid = current->tgid;
+	the_task->pid = current->pid;
+	the_task->uid = current->cred->uid.val;
+	the_task->euid = current->cred->euid.val;
+	strncpy(the_task->comm, current->comm, strlen(current->comm));
+	
+	//printk("%s: Information 1 about program:\nTGID: %d\nPID: %d\nUID: %d\nEUID: %d\nProgram name: %s\n",MODNAME, the_task->tgid, the_task->pid, the_task->uid, the_task->euid, the_task->comm);
+	
+	__INIT_WORK(&(the_task->the_work),(void*)register_access, (unsigned long)(&(the_task->the_work)));
+
+	schedule_work(&the_task->the_work);
+
 	//the filp_open is executed but with flag 0_RDONLY. Any attempt to write will return an error.
 	op_flag->open_flag = ((flags & O_WRONLY) & O_RDWR) | O_RDONLY;
 	regs->dx = (unsigned long)op_flag;

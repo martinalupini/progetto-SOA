@@ -48,7 +48,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	
-	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDWR);
+	fd=open("/home/martina/Desktop/progetto-SOA/user/file", O_RDWR);
 	if (fd== -1) {
 		perror("Open error: ");
 		exit(-2);
