@@ -18,6 +18,7 @@
 #include <asm/cacheflush.h>
 #include <asm/apic.h>
 #include <linux/syscalls.h>
+#include <linux/namei.h>
 #include "lib/include/scth.h"
 
 #define MODNAME "Reference monitor"
@@ -46,31 +47,62 @@ typedef struct ref_monitor {
 monitor_t monitor;
 
 //pre-handlers////////////////////////////////////////////////
+struct open_flag {
+	int open_flag;
+	umode_t mode;
+	int acc_mode;
+	int intent;
+	int lookup_flags;
+};
+
 
 
 static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	int i=-1;
 	
+	struct path path_struct;
+	char *tpath;
+	const char *path;
+	int error = -EINVAL,flag=0;
+	unsigned int lookup_flags = 0;
+	
 	int dfd = (int)(regs->di); //arg0
-	char *path = ((struct filename *)(regs->si))->name; //arg1
+	const __user char *user_path = ((struct filename *)(regs->si))->uptr; //arg1
+	const char *real_path = ((struct filename *)(regs->si))->name;
 	int flags = ((struct open_flag *)(regs->dx))->open_flag; //arg2
+
 	
 	
 	char run[5]; 
-	strncpy(run, path, 4);
+	strncpy(run, user_path, 4);
 	run[4]='\0';
 	if( strcmp(run, "/run") ==0 ){
 		 return 0;
 	}
 	
+	printk("%s: open intercepted: file is %s and flags are %d\n",MODNAME, user_path, flags);
 	
-	//checking if the file is protected 
-	printk("%s: open intercepted: file is %s and flags are %d\n",MODNAME, path, flags);
+	//checking if file is open in write mode
+	if(!(flags & O_RDWR) && !(flags & O_WRONLY))  return 0;
 	
 	
+	//obtaining full path
+	tpath=kmalloc(1024,GFP_KERNEL);
+	if(path == NULL){
+		 path = real_path;
+	}else{
+		if (!(flag & AT_SYMLINK_NOFOLLOW))
+    			lookup_flags |= LOOKUP_FOLLOW;
+		error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
+		path = d_path(&path_struct, tpath, 1024);
+		printk("complete path is %s\n",path);
+	}
+	kfree(tpath);
+	
+	//if open in write mode checking if its protected
 	for(i=0; i<monitor.last_path ; i++){
-		if(strcmp(monitor.path[i], path) == 0 &&  !(flag & O_RDWR) && !(flag & O_WRONLY)){
+		if(strcmp(monitor.path[i], path) == 0){
 			printk("%s: Current path cannot be opened in write mode: open rejected\n",MODNAME);
 			goto reject;
 		}
@@ -123,16 +155,6 @@ int restore[HACKED_ENTRIES] = {[0 ... (HACKED_ENTRIES-1)] -1};
 #define get_euid()  current->cred->euid.val
 
 
-struct open_flag {
-	int open_flag;
-	umode_t mode;
-	int acc_mode;
-	int intent;
-	int lookup_flags;
-};
-
-
-
 __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 	
 	int ret;
@@ -153,12 +175,12 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 		case OFF:
 		 	enable_kprobe(&kp_open);
 		 	break;
-		 case RECON:
+		case RECON:
 		 	break;
-		 case RECOFF:
+		case RECOFF:
 		 	enable_kprobe(&kp_open);
 		 	break;
-		 default:
+		default:
 		 	enable_kprobe(&kp_open);
 		 	break;
 	
@@ -191,12 +213,12 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 			break;
 		case OFF:
 		 	break;
-		 case RECON:
+		case RECON:
 		 	disable_kprobe(&kp_open);
 		 	break;
-		 case RECOFF:
+		case RECOFF:
 		 	break;
-		 default:
+		default:
 		 	disable_kprobe(&kp_open);
 		 	break;
 	
@@ -229,12 +251,12 @@ __SYSCALL_DEFINEx(1, _monitor_recon, char __user *, pass_user){
 		case OFF:
 		 	enable_kprobe(&kp_open);
 		 	break;
-		 case RECON:
+		case RECON:
 		 	break;
-		 case RECOFF:
+		case RECOFF:
 		 	enable_kprobe(&kp_open);
 		 	break;
-		 default:
+		default:
 		 	enable_kprobe(&kp_open);
 		 	break;
 	
@@ -267,12 +289,12 @@ __SYSCALL_DEFINEx(1, _monitor_recoff, char *, pass_user){
 			break;
 		case OFF:
 		 	break;
-		 case RECON:
+		case RECON:
 		 	disable_kprobe(&kp_open);
 		 	break;
-		 case RECOFF:
+		case RECOFF:
 		 	break;
-		 default:
+		default:
 		 	disable_kprobe(&kp_open);
 		 	break;
 	
@@ -403,23 +425,20 @@ long sys_remove_path = (unsigned long) __x64_sys_remove_path;
 int init_module(void) {
 	int i;
 	int ret;
-	//char *path[MAXSIZE];
 	
 	printk("%s: initializing\n",MODNAME);
 	
 	monitor.pass = "prova";
 	monitor.mode = ON;
-	//monitor.path[0] = "/home/martina/Desktop/progetto-SOA/file";
-	monitor.last_path = 0;
+	monitor.path[0] = "Makefile";
+	monitor.last_path = 1;
 	spin_lock_init(&(monitor.lock));
 	
-	//opening file of custom filesystem//////////////////////////////////////
-	
-	
+	//opening file of custom filesystem
 	//monitor.file = filp_open("singlefile-FS/mount/the-file", O_RDWR, 0);
 	//printk("%s: opened file %s", MODNAME, monitor.file->f_path.dentry->d_iname); 
 	
-	//installing system calls//////////////////////////////////////////////////
+	//installing system calls
 	if (the_syscall_table == 0x0){
 	   printk("%s: cannot manage sys_call_table address set to 0x0\n",MODNAME);
 	   return -1;
@@ -464,7 +483,7 @@ int init_module(void) {
 
 
 
-	//registering kprobes//////////////////////////////////////////////////////////////
+	//registering kprobes
         ret = register_kprobe(&kp_open);
         if (ret < 0) {
                 printk("%s: kprobe open registering failed, returned %d\n",MODNAME,ret);
@@ -491,12 +510,15 @@ void cleanup_module(void) {
 	protect_memory();
         printk("%s: sys-call table restored to its original content\n",MODNAME);
         
-        
         //unregistering kprobes
         unregister_kprobe(&kp_open);
-        
         printk("%s: kprobes unregistered\n", MODNAME);
-
+        
+        //freeing kernel memory
+        for(i=0; monitor.path[i]!= NULL; i++){
+        	kfree(monitor.path[i]);
+        }
+        printk("%s: Module correctly removed\n", MODNAME);
         
 }
 
