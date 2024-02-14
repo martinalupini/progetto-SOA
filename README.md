@@ -1,10 +1,20 @@
-# Advance Operating System Project - Kernel Level Reference Monitor
+# Advanced Operating Systems Project - Kernel Level Reference Monitor
 
 ## Getting started
 
 To clone the repository and also the submodule run:
 
 git clone --recurse-submodules https://github.com/martinalupini/progetto-SOA
+
+## Preliminar steps
+
+1. Install the module the_usctm.ko contained in the folder "Linux-sys_call_table-discoverer". To install it use the Makefile in that folder.
+2. Install the filesystem contained in the folder "singlefile-FS". Follow the directions contained in the Makefile.
+3. Install the module the_reference_monitor.ko following the directions of the Makefile of the main directory "Progetto-SOA".
+
+## Project specification 
+
+The project specification can be found at the link: https://francescoquaglia.github.io/TEACHING/AOS/CURRENT/PROJECTS/project-specification-2023-2024.html
 
 ## Implementation 
 
@@ -21,5 +31,5 @@ The kprobe is done on the kernel function **do_filp_open**. The signature of thi
 
 struct file *do_filp_open(int dfd, struct filename *pathname, const struct open_flags *op)
 
-If we reconstruct the flow of system calls from open() we will arrive to filp_open() which in turn calls file_open_name() which then calls do_filp_open(AT_FDCWD, name, &op) (AT_FDCWD equals to -100 and means that the system has to consider the pwd)
+If we reconstruct the flow of system calls from open() we will arrive to filp_open() which in turn calls file_open_name() which then calls do_filp_open(AT_FDCWD, name, &op) (AT_FDCWD equals to -100 and means that the system has to consider the pwd).
 
