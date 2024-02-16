@@ -63,8 +63,11 @@ int main (int argc, char *argv[]) {
 	i =stop_monitor("prova");
 	if(i<0) printf("error\n");
 	start_monitor("prova");
+	*/
 	recon("prova");
-	add_path("/home/martina/Desktop/progetto-SOA", "prova");
+	i=add_path("../singlefile-FS/mount/the-file", "prova");
+	if(i<0) printf("error adding file\n");
+	/*
 	add_path("/home/martina/Desktop/file", "prova");
 	add_path("/home/martina/Desktop", "prova");
 	rm_path("/home/martina/Desktop", "prova");

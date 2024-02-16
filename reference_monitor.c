@@ -19,7 +19,9 @@
 #include <asm/apic.h>
 #include <linux/syscalls.h>
 #include <linux/namei.h>
+#include <linux/random.h> 
 #include "lib/include/scth.h"
+//#include "lib/include/cryptohash.h"
 
 #define MODNAME "Reference monitor"
 
@@ -29,9 +31,11 @@ MODULE_DESCRIPTION("This module implements a reference monitor that deny the ope
 
 
 //reference monitor//////////////////////////////////////////
+#define MAXSIZE 32
+#define SYMMETRIC_KEY_LENGTH 32 
+#define CIPHER_BLOCK_SIZE 16 
 
 enum {ON, OFF, RECON, RECOFF};
-#define MAXSIZE 32
 
 
 typedef struct ref_monitor {
@@ -46,6 +50,14 @@ typedef struct ref_monitor {
 
 monitor_t monitor;
 
+//keystream and iv used for simmetric encryption
+/*
+char keystream[SYMMETRIC_KEY_LENGTH];
+char iv[CIPHER_BLOCK_SIZE];
+
+get_random_bytes((void *)keystream, SYMMETRIC_KEY_LENGTH);
+get_random_bytes((void *)iv, CIPHER_BLOCK_SIZE);
+*/
 
 //deferred work struct and function///////////////////////////
 
@@ -81,17 +93,34 @@ struct open_flags {
 };
 
 
+char *full_path_user(int dfd, const __user char *user_path){
+	struct path path_struct;
+	char *tpath;
+	char *path;
+	int error = -EINVAL,flag=0;
+	unsigned int lookup_flags = 0;
+
+	tpath=kmalloc(1024,GFP_KERNEL);
+	if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
+	error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
+	if(error){
+		printk("%s: File %s does not exist. Error is %d\n", MODNAME, user_path, error);
+		//kfree(tpath);
+		return NULL;
+	}
+	
+	path = d_path(&path_struct, tpath, 1024);
+	//kfree(tpath);		
+	return path;
+
+}
 
 static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	int i=-1;
 	packed_work *the_task;
-	
-	struct path path_struct;
-	char *tpath;
+
 	const char *path;
-	int error = -EINVAL,flag=0;
-	unsigned int lookup_flags = 0;
 	
 	int dfd = (int)(regs->di); //arg0
 	const __user char *user_path = ((struct filename *)(regs->si))->uptr; //arg1
@@ -109,25 +138,15 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 
 	//checking if file is open in write mode
-	if(!(flags & O_RDWR) && !(flags & O_WRONLY))  return 0;
+	if(!(flags & O_RDWR) && !(flags & O_WRONLY) && !(flags & O_CREAT))  return 0;
 	
-	//obtaining full path
-	tpath=kmalloc(1024,GFP_KERNEL);
+	
 	if(user_path == NULL){
 		 path = real_path;
 	}else{
-		if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
-		error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
-		if(error){
-			printk("%s: File %s does not exist\n", MODNAME, user_path);
-			kfree(tpath);
-			return 0;
-		}
-			
-		path = d_path(&path_struct, tpath, 1024);
+		path = full_path_user(dfd, user_path);
 		if(path == NULL) path = real_path;
 	}
-	kfree(tpath);
 	
 	printk("%s: open in write mode intercepted: file is %s\n",MODNAME, path);
 
@@ -138,7 +157,14 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 			goto reject;
 		}
 	}
+	
+	
+	if(flags & O_CREAT){
+	
+	
+	}
 
+	kfree(path);
 	return 0;
 	
 reject:
@@ -150,17 +176,17 @@ reject:
 	the_task->uid = current->cred->uid.val;
 	the_task->euid = current->cred->euid.val;
 	strncpy(the_task->comm, current->comm, strlen(current->comm));
-	
-	//printk("%s: Information 1 about program:\nTGID: %d\nPID: %d\nUID: %d\nEUID: %d\nProgram name: %s\n",MODNAME, the_task->tgid, the_task->pid, the_task->uid, the_task->euid, the_task->comm);
+
 	
 	__INIT_WORK(&(the_task->the_work),(void*)register_access, (unsigned long)(&(the_task->the_work)));
 
 	schedule_work(&the_task->the_work);
 
 	//the filp_open is executed but with flag 0_RDONLY. Any attempt to write will return an error.
-	op_flag->open_flag = ((flags & O_WRONLY) & O_RDWR) | O_RDONLY;
+	op_flag->open_flag = ((flags ^ O_WRONLY) ^ O_RDWR) | O_RDONLY;
 	regs->dx = (unsigned long)op_flag;
 	
+	kfree(path);
 	return 0;
 
 }
@@ -359,9 +385,7 @@ __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_use
 	int ret;
 	int len_pass;
 	char *pass;
-	int len = strlen(new_path)+1;
-	char* file_path = (char*)kmalloc(len, GFP_KERNEL);
-	ret = copy_from_user(file_path, new_path, len);
+	char* file_path = full_path_user(-100, new_path);
 	
 	len_pass = strlen(pass_user)+1;
 	pass = (char*)kmalloc(len_pass, GFP_KERNEL);
@@ -379,6 +403,13 @@ __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_use
 		kfree(pass);
 		return -1;
 	}
+	
+	//check if file is the-file
+	if( strstr(file_path, "/singlefile-FS/mount/the-file") != NULL ){
+		printk("%s: Cannot deny writes on the-file\n", MODNAME);
+		return -1;
+	}
+	 
 	
 	//check if blacklist full
 	if(monitor.last_path == MAXSIZE-1){
@@ -475,6 +506,7 @@ int init_module(void) {
 	printk("%s: initializing\n",MODNAME);
 	
 	monitor.pass = "prova";
+	//printk("%s: Encrypted key is %s\n", MODNAME, monitor.pass);
 	monitor.mode = ON;
 	monitor.path[0] = "/home/martina/Desktop/progetto-SOA/user/file.txt";
 	monitor.last_path = 1;
