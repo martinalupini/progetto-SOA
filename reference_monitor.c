@@ -81,24 +81,13 @@ void register_access(unsigned long input){
 	if(str == NULL) return;
 
 
-	printk("%s: Information about program:\nTGID: %d\nPID: %d\nUID: %d\nEUID: %d\nProgram name: %s\n",MODNAME, data->tgid, data->pid, data->uid, data->euid, data->comm);
+	//printk("%s: Information about program:\nTGID: %d\nPID: %d\nUID: %d\nEUID: %d\nProgram name: %s\n",MODNAME, data->tgid, data->pid, data->uid, data->euid, data->comm);
 	
-	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s", data->tgid, data->pid, data->uid, data->euid, data->comm);
-	/*
-	strcat(str, "TGID: ");
-	sprintf(str, "%d", data->tgid)); 
-	strcat(str, itoa(data->tgid));
-	strcat(str, " PID: ");
-	strcat(str, itoa(data->pid));
-	strcat(str, " UID; ");
-	strcat(str, itoa(data->uid));
-	strcat(str, " EUID: ");
-	strcat(str, itoa(data->euid));
-	strcat(str, " PROGRAM: ");
-	strcat(str, itoa(data->comm));*/
+	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm);
+	
 	//crypto hash file
 
-    	file = filp_open("/home/martina/Desktop/progetto-SOA/singlefile-FS/mount/the-file", O_WRONLY, 0);
+    	file = filp_open("/home/martina/Desktop/progetto-SOA/singlefile-FS/mount/the-file", O_WRONLY , 0);
     	if (IS_ERR(file)) {
     		printk("%s Deferred Work: Impossible to open the file \"the-file\"\n", MODNAME);
         	return;

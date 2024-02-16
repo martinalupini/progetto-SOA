@@ -7,6 +7,7 @@
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/uio.h>
 
 #include "singlefilefs.h"
 
@@ -55,6 +56,50 @@ ssize_t onefilefs_read(struct file * filp, char __user * buf, size_t len, loff_t
 
     return len - ret;
 
+}
+
+ssize_t onefilefs_write_iter(struct kiocb *iocb, struct iov_iter *from){
+    
+    loff_t off;
+    struct file *filp = iocb->ki_filp;
+    char *buf= from->kvec->iov_base;
+    size_t len = from->kvec->iov_len;
+ 
+    int block_to_read;//index of the block to be read from device
+    loff_t offset;
+    struct buffer_head *bh = NULL;
+    struct inode * the_inode = filp->f_inode;
+    i_size_write(the_inode, file_size);
+    
+    
+    off = i_size_read(the_inode); //writing in append mode ONLY
+
+    printk("%s: write operation called with len %ld - and offset %lld (the current file size is %lld)",MOD_NAME, len, off, file_size);
+
+    //determine the block level offset for the operation
+     offset = off % DEFAULT_BLOCK_SIZE; 
+    //just read stuff in a single block - residuals will be managed at the applicatin level
+    if (offset + len > DEFAULT_BLOCK_SIZE)
+        len = DEFAULT_BLOCK_SIZE - offset;
+
+    //compute the actual index of the the block to be read from device
+    block_to_read = off / DEFAULT_BLOCK_SIZE + 2; //the value 2 accounts for superblock and file-inode on device
+    
+    printk("%s: write operation must access block %d of the device",MOD_NAME, block_to_read);
+
+    bh = (struct buffer_head *)sb_bread(filp->f_path.dentry->d_inode->i_sb, block_to_read);
+    if(!bh){
+	return -EIO;
+    }
+    memcpy(bh->b_data + offset, buf, len);
+    sync_dirty_buffer(bh); //write immediately on disk
+    off += len;
+    //updating global variable (O_APPEND in open() updates the file length to 0 so we need to keep original lenght)
+    file_size = off; 
+    i_size_write(the_inode, off);
+    brelse(bh);
+  
+    return len;
 }
 
 ssize_t onefilefs_write(struct file * filp, const char __user * buf, size_t len, loff_t * off) {
@@ -163,5 +208,6 @@ const struct file_operations onefilefs_file_operations = {
     .owner = THIS_MODULE,
     .llseek = default_llseek,
     .read = onefilefs_read,
-    .write = onefilefs_write, 
+    //.write = onefilefs_write, 
+    .write_iter = onefilefs_write_iter
 };
