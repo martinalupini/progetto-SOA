@@ -48,7 +48,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	
-	fd=open("/home/martina/Desktop/progetto-SOA/user/file", O_RDWR);
+	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDONLY);
 	if (fd== -1) {
 		perror("Open error: ");
 		exit(-2);
@@ -67,8 +67,9 @@ int main (int argc, char *argv[]) {
 	recon("prova");
 	i=add_path("../singlefile-FS/mount/the-file", "prova");
 	if(i<0) printf("error adding file\n");
+
+	//add_path("/home/martina/Desktop/file", "prova");
 	/*
-	add_path("/home/martina/Desktop/file", "prova");
 	add_path("/home/martina/Desktop", "prova");
 	rm_path("/home/martina/Desktop", "prova");
 	rm_path("/home/martina/Desktop/progetto-SOA", "prova");

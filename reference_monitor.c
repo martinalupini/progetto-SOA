@@ -19,7 +19,7 @@
 #include <asm/apic.h>
 #include <linux/syscalls.h>
 #include <linux/namei.h>
-#include <linux/random.h> 
+#include <linux/random.h>
 #include "lib/include/scth.h"
 //#include "lib/include/cryptohash.h"
 
@@ -72,15 +72,42 @@ typedef struct _packed_work{
 
 
 void register_access(unsigned long input){
+
 	packed_work *data = (void*)container_of((void*)input,packed_work,the_work);
+	struct file *file = NULL;
+	char *str = kzalloc(1024, GFP_KERNEL);
+	loff_t pos = 0;
+	int ret;
+	if(str == NULL) return;
+
 
 	printk("%s: Information about program:\nTGID: %d\nPID: %d\nUID: %d\nEUID: %d\nProgram name: %s\n",MODNAME, data->tgid, data->pid, data->uid, data->euid, data->comm);
 	
+	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s", data->tgid, data->pid, data->uid, data->euid, data->comm);
+	/*
+	strcat(str, "TGID: ");
+	sprintf(str, "%d", data->tgid)); 
+	strcat(str, itoa(data->tgid));
+	strcat(str, " PID: ");
+	strcat(str, itoa(data->pid));
+	strcat(str, " UID; ");
+	strcat(str, itoa(data->uid));
+	strcat(str, " EUID: ");
+	strcat(str, itoa(data->euid));
+	strcat(str, " PROGRAM: ");
+	strcat(str, itoa(data->comm));*/
+	//crypto hash file
 
+    	file = filp_open("/home/martina/Desktop/progetto-SOA/singlefile-FS/mount/the-file", O_WRONLY, 0);
+    	if (IS_ERR(file)) {
+    		printk("%s Deferred Work: Impossible to open the file \"the-file\"\n", MODNAME);
+        	return;
+    	}
+
+    	ret = kernel_write(file, str, strlen(str), &pos);
+    	printk("%s Deferred Work: File written with %s\n", MODNAME, str);
+	
 }
-
-
-
 
 //pre-handlers////////////////////////////////////////////////
 struct open_flags {
@@ -105,12 +132,12 @@ char *full_path_user(int dfd, const __user char *user_path){
 	error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
 	if(error){
 		printk("%s: File %s does not exist. Error is %d\n", MODNAME, user_path, error);
-		//kfree(tpath);
+		kfree(tpath);
 		return NULL;
 	}
 	
 	path = d_path(&path_struct, tpath, 1024);
-	//kfree(tpath);		
+	kfree(tpath);		
 	return path;
 
 }
@@ -163,8 +190,6 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	
 	}
-
-	kfree(path);
 	return 0;
 	
 reject:
@@ -185,8 +210,7 @@ reject:
 	//the filp_open is executed but with flag 0_RDONLY. Any attempt to write will return an error.
 	op_flag->open_flag = ((flags ^ O_WRONLY) ^ O_RDWR) | O_RDONLY;
 	regs->dx = (unsigned long)op_flag;
-	
-	kfree(path);
+
 	return 0;
 
 }
@@ -405,8 +429,10 @@ __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_use
 	}
 	
 	//check if file is the-file
-	if( strstr(file_path, "/singlefile-FS/mount/the-file") != NULL ){
-		printk("%s: Cannot deny writes on the-file\n", MODNAME);
+	if(file_path != NULL && strstr(file_path, "/singlefile-FS/mount/the-file") != NULL ){
+		printk("%s: Cannot deny writes on the-file. file_path is %s \n", MODNAME, file_path);
+		spin_unlock(&(monitor.lock));
+		kfree(pass);
 		return -1;
 	}
 	 
