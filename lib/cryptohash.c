@@ -28,141 +28,53 @@
 MODULE_DESCRIPTION("Symmetric key encryption and crypto hashing"); 
 MODULE_LICENSE("GPL");
 
-
-#define SYMMETRIC_KEY_LENGTH 32 
-#define CIPHER_BLOCK_SIZE 16 
 #define LIBNAME "CRYPTOHASH"
 
+char *keystream = "JlCCpbgpW23hgxjHuPqb2e64g68OqCgx";
 
-typedef struct skcipher_def { 
+char *encrypt(char *plaintext, size_t datasize){ 
 
-    struct scatterlist sg; 
-    struct crypto_skcipher *tfm; 
-    struct skcipher_request *req; 
-    //struct tcrypt_result result; 
-    char *plaintxt; 
-    //char *ciphertext; 
-    char *iv; 
-
-} skcipher;  
-
-
-
-static void skcipher_finish(skcipher *sk) { 
-
-    if (sk->tfm) crypto_free_skcipher(sk->tfm); 
-    if (sk->req)  skcipher_request_free(sk->req); 
-    //if (sk->iv)  kfree(sk->iv); 
-    //if (sk->plaintxt) kfree(sk->plaintxt); 
-    //if (sk->ciphertext) kfree(sk->ciphertext); 
-    kfree(sk);
-} 
-
-
-char *encrypt(char *plaintext, char *key, char *iv, size_t datasize){ 
-
-    printk("%s: Encryption started\n", LIBNAME);
-    int ret;
-    skcipher *sk; 
+	int i;
+	char *ciphertext;
+    	//printk("%s: Encryption started\n", LIBNAME);
     
-    char *ciphertext;
-    ciphertext = kmalloc(datasize, GFP_KERNEL);
-    if(ciphertext == NULL){
-    	printk("%s: kmalloc cipertext failed\n", LIBNAME);
-      	return NULL;
-    }
+    	ciphertext = kmalloc(datasize, GFP_KERNEL);
+    	if(ciphertext == NULL){
+    		printk("%s: kmalloc cipertext failed\n", LIBNAME);
+      		return NULL;
+    	}
     
-    sk = kmalloc(sizeof(skcipher), GFP_KERNEL);
-    if(sk == NULL){
-    	printk("%s: kmalloc sk failed\n", LIBNAME);
-       	return NULL;
-    }
-    
+  	for(i=0; i<datasize; i++){
+
+  	 	ciphertext[i] = plaintext[i] ^ keystream[i];
+  	}
+  	ciphertext[i]='\0';
+  	 
+  	return ciphertext;
    
-    if (!(sk->tfm)) { 
-        sk->tfm = crypto_alloc_skcipher("ebc-aes-aesni", 0, 0); 
-        if (IS_ERR(sk->tfm)) { 
-            printk("%s: Could not allocate skcipher handle\n",LIBNAME); 
-            //return PTR_ERR(sk->tfm); 
-            goto out;
-        } 
-    } 
-
- 
-
-    if (!sk->req) { 
-        sk->req = skcipher_request_alloc(sk->tfm, GFP_KERNEL); 
-        if (!sk->req) { 
-            printk("%s: Could not allocate skcipher request\n", LIBNAME); 
-            goto out; 
-        } 
-    } 
-
-    //skcipher_request_set_callback(sk->req, CRYPTO_TFM_REQ_MAY_BACKLOG, skcipher_callback, &sk->result); 
- 
-
-    /* AES 256 with given symmetric key */ 
-    if (crypto_skcipher_setkey(sk->tfm, key, SYMMETRIC_KEY_LENGTH)) { 
-       	printk("%s: Key could not be set\n", LIBNAME); 
-       	goto out;
-
-    } 
-
-    //pr_info("Symmetric key: %s\n", key); 
-
-    //pr_info("Plaintext: %s\n", plaintext); 
-
-   /*
-    if (!sk->iv) { 
-        sk->iv = kmalloc(CIPHER_BLOCK_SIZE, GFP_KERNEL);
-        if (!sk->iv) { 
-            printk("%s: Could not allocate iv\n", LIBNAME); 
-            goto out;
-        } 
-
-    } 
-    sprintf((char *)sk->iv, "%s", iv);
-	
- 
-    
-    if (!sk->plaintxt) { 
-        sk->plaintxt = kmalloc(datasize, GFP_KERNEL); 
-
-        if (!sk->plaintxt) { 
-            printk("%s: Could not allocate plaintext\n", LIBNAME); 
-            goto out;
-        } 
-
-    } 
-
-    sprintf((char *)sk->plaintxt, "%s", plaintext); */
-
-    sg_init_one(&sk->sg, plaintext, datasize); 
-
-    skcipher_request_set_crypt(sk->req, &sk->sg, &sk->sg, datasize, iv); 
-
-    //init_completion(&sk->result.completion); 
-
-
-    /* encrypt data */ 
-    ret = crypto_skcipher_encrypt(sk->req); 
-    if(ret != 0) goto out;
-
-    
-    sg_copy_to_buffer(&sk->sg, 1, ciphertext, datasize);
-    //ret = skcipher_result(sk, ret); 
-    
-    skcipher_finish(sk);
-
-    printk("%s: Encryption request successful. Ciphertext is %s\n", LIBNAME, ciphertext); 
-
-    return ciphertext; 
-    
-out:
-    kfree(sk);
-    return NULL;
-
+   
 } 
+
+int auth_pass(char __user *pass, char *real_pass){
+
+	int ret, i;
+	size_t len = strlen(pass);
+	char *try = kmalloc(len+1, GFP_KERNEL);
+	ret = copy_from_user(try, pass, len+1);
+	
+	try = encrypt(try, len);
+	
+	for(i=0; i<len; i++){
+		printk("pass %x try %x", real_pass[i], try[i]);
+	}
+	
+	if(strcmp(real_pass, try) == 0){
+		kfree(try);
+		return 0;
+	}
+	kfree(try);
+	return -1;
+}
 
  
  

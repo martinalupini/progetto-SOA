@@ -9,7 +9,7 @@
 
 char *string = "ciao\n";
 
-int syscall_entry[6];
+int syscall_entry[7];
 
 int start_monitor(char *pass){
 	return syscall(syscall_entry[0],pass);
@@ -35,6 +35,10 @@ int rm_path(char *path, char *pass){
 	return syscall(syscall_entry[5],path, pass);
 }
 
+int change_pass(char *new_pass, char *old_pass){
+	return syscall(syscall_entry[6],new_pass, old_pass);
+}
+
 
 int main (int argc, char *argv[]) {
 
@@ -42,12 +46,13 @@ int main (int argc, char *argv[]) {
 	int i;
 	char *buffer = malloc(256);
 
-	for(i=0; i<6; i++){
+	for(i=0; i<7; i++){
 		syscall_entry[i]= atoi(argv[i+1]);
 		printf("%d\n", syscall_entry[i]);
 	}
 
 	
+	/*
 	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDONLY);
 	if (fd== -1) {
 		perror("Open error: ");
@@ -57,18 +62,21 @@ int main (int argc, char *argv[]) {
 	read(fd,buffer,256);
 	
 	printf("%s\n", buffer);
-	
-	
-	/*
-	i =stop_monitor("prova");
-	if(i<0) printf("error\n");
-	start_monitor("prova");
 	*/
-	recon("prova");
-	i=add_path("../singlefile-FS/mount/the-file", "prova");
+	
+	
+	i =stop_monitor("changeme");
+	if(i<0) printf("error\n");
+	start_monitor("changeme");
+	
+	recon("changeme");
+	i=add_path("../singlefile-FS/mount/the-file", "changeme");
 	if(i<0) printf("error adding file\n");
+	add_path("/home/martina/Desktop", "changeme");
+	i=change_pass("ciao", "changeme");
 
-	//add_path("/home/martina/Desktop/file", "prova");
+	
+	add_path("/home/martina/Desktop/file", "ciao");
 	/*
 	add_path("/home/martina/Desktop", "prova");
 	rm_path("/home/martina/Desktop", "prova");
