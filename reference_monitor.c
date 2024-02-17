@@ -21,14 +21,16 @@
 #include <linux/namei.h>
 #include <linux/random.h>
 #include "lib/include/scth.h"
-//#include "lib/include/cryptohash.h"
+#include <crypto/hash.h>
+#include <crypto/skcipher.h>
+#include <linux/scatterlist.h>
+#include "lib/include/cryptohash.h"
 
 #define MODNAME "Reference monitor"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Martina Lupini");
 MODULE_DESCRIPTION("This module implements a reference monitor that deny the opening in write mode of the specified files or directories");
-
 
 //reference monitor//////////////////////////////////////////
 #define MAXSIZE 32
@@ -40,6 +42,7 @@ enum {ON, OFF, RECON, RECOFF};
 
 typedef struct ref_monitor {
 	char *pass;
+	size_t pass_len;
 	int mode;
 	char *path[MAXSIZE];
 	int last_path;
@@ -51,13 +54,12 @@ typedef struct ref_monitor {
 monitor_t monitor;
 
 //keystream and iv used for simmetric encryption
-/*
-char keystream[SYMMETRIC_KEY_LENGTH];
-char iv[CIPHER_BLOCK_SIZE];
+//char *keystream;
+//char *iv;
+char *keystream;
+char *iv;
 
-get_random_bytes((void *)keystream, SYMMETRIC_KEY_LENGTH);
-get_random_bytes((void *)iv, CIPHER_BLOCK_SIZE);
-*/
+
 
 //deferred work struct and function///////////////////////////
 
@@ -109,6 +111,40 @@ struct open_flags {
 };
 
 
+char *find_dir(char *path){
+
+	int i= strlen(path)-1;
+	char *new_string = kmalloc(strlen(path), GFP_KERNEL);
+	
+	while(i>=0){
+		if(path[i] != '/'){ 
+			new_string[i] = '\0'; 
+		}
+		else{
+			new_string[i]='\0';
+			i--;
+		 	break;
+		}
+		i--;
+	}
+	
+	while(i>=0){
+		new_string[i] = path[i];
+		i--;
+	}
+	
+	return new_string;
+}
+
+/*
+static int mkdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
+	
+	printk("%s: mkdir intercepted.", MODNAME);	
+	
+	return 0;
+
+}*/
+
 char *full_path_user(int dfd, const __user char *user_path){
 	struct path path_struct;
 	char *tpath;
@@ -143,6 +179,7 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	const char *real_path = ((struct filename *)(regs->si))->name;
 	struct open_flags *op_flag = (struct open_flags *)(regs->dx); //arg2
 	int flags = op_flag->open_flag;
+	char *dir;
 
 	
 	char run[5]; 
@@ -176,7 +213,7 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	
 	if(flags & O_CREAT){
-	
+		dir = find_dir(path);
 	
 	}
 	return 0;
@@ -224,6 +261,8 @@ int entry5=0;
 int entry6=0;
 
 module_param(the_syscall_table, ulong, 0660);
+module_param(keystream, charp , 0660);
+module_param(iv, charp , 0660);
 module_param(entry1, int, 0660);
 module_param(entry2, int, 0660);
 module_param(entry3, int, 0660);
@@ -520,8 +559,18 @@ int init_module(void) {
 	
 	printk("%s: initializing\n",MODNAME);
 	
-	monitor.pass = "prova";
-	//printk("%s: Encrypted key is %s\n", MODNAME, monitor.pass);
+	//keystream = kmalloc(SYMMETRIC_KEY_LENGTH,GFP_KERNEL);
+	//iv= kmalloc(CIPHER_BLOCK_SIZE ,GFPKERNEL);
+	//get_random_bytes(keystream, SYMMETRIC_KEY_LENGTH);
+	//get_random_bytes(iv, CIPHER_BLOCK_SIZE);
+	char *boh = encrypt("prova", keystream, iv, strlen("prova"));
+	monitor.pass = encrypt("prova", keystream, iv, strlen("prova"));
+	printk("%s: Encrypted password is %s, len is %d\n", MODNAME, monitor.pass, strlen(monitor.pass));
+	if(strcmp(monitor.pass, boh) == 0) printk("vittoria");
+	for(i=0; i<strlen(monitor.pass); i++){
+		printk("char %d is %x\n", i, monitor.pass[i]);
+	
+	}
 	monitor.mode = ON;
 	monitor.path[0] = "/home/martina/Desktop/progetto-SOA/user/file.txt";
 	monitor.last_path = 1;
