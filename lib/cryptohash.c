@@ -29,6 +29,7 @@ MODULE_DESCRIPTION("Symmetric key encryption and crypto hashing");
 MODULE_LICENSE("GPL");
 
 #define LIBNAME "CRYPTOHASH"
+#define HASHSIZE 32 //as written in the driver sha256 info (shown with cat /proc/crypto) 
 
 char *keystream = "JlCCpbgpW23hgxjHuPqb2e64g68OqCgx";
 
@@ -57,16 +58,12 @@ char *encrypt(char *plaintext, size_t datasize){
 
 int auth_pass(char __user *pass, char *real_pass){
 
-	int ret, i;
+	int ret;
 	size_t len = strlen(pass);
 	char *try = kmalloc(len+1, GFP_KERNEL);
 	ret = copy_from_user(try, pass, len+1);
 	
 	try = encrypt(try, len);
-	
-	for(i=0; i<len; i++){
-		printk("pass %x try %x", real_pass[i], try[i]);
-	}
 	
 	if(strcmp(real_pass, try) == 0){
 		kfree(try);
@@ -76,10 +73,61 @@ int auth_pass(char __user *pass, char *real_pass){
 	return -1;
 }
 
- 
- 
 
+char *sha256(char *text){
+	struct crypto_shash* algorithm;
+    	struct shash_desc* desc;
+    	int err;
+    	char *digest = kmalloc(HASHSIZE, GFP_KERNEL);
+    	if(digest == NULL)  return NULL;
+    	
+    	algorithm = crypto_alloc_shash("sha256", 0, 0);
+    	if(IS_ERR(algorithm)) { 
+    		printk("%s: Hashing algorithm not supported\n", LIBNAME);
+    		return NULL;
+	}
+	
+	desc = kmalloc(sizeof(struct shash_desc) + crypto_shash_descsize(algorithm), GFP_KERNEL);
+	if(!desc) { 
+    		printk("%s: failed to allocate memory\n", LIBNAME);
+    		return NULL;
+	}
+	desc->tfm = algorithm;
+	
+	// Initialize shash API
+	err = crypto_shash_init(desc);
+	if(err)  {
+    		printk("%s: failed to initialize shash\n", LIBNAME);
+    		goto out;
+	}
 
+	// Execute hash function
+	err = crypto_shash_update(desc, text, strlen(text));
+	if(err) {
+    		printk("%s: failed to execute hashing function\n", LIBNAME);
+    		goto out;
+	}
+
+	// Write the result to a new char buffer
+	err = crypto_shash_final(desc, digest);
+	if(err) {
+    		printk("%s: Failed to complete hashing function\n", LIBNAME);
+    		goto out;
+	}
+
+	// Finally, clean up resources
+	crypto_free_shash(algorithm);
+	kfree(desc);
+
+	printk("%s: String successfully hashed. Content is %s and len is %d\n", LIBNAME, digest, strlen(digest));
+
+	return digest;
+
+out: // Manage errors
+	crypto_free_shash(algorithm);
+	kfree(desc);
+	return NULL;
+}
 
  
 

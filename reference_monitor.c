@@ -24,6 +24,8 @@
 #include <crypto/hash.h>
 #include <crypto/skcipher.h>
 #include <linux/scatterlist.h>
+#include <linux/fs_struct.h>
+#include <linux/mm_types.h>
 #include "lib/include/cryptohash.h"
 
 #define MODNAME "Reference monitor"
@@ -52,6 +54,8 @@ typedef struct ref_monitor {
 
 monitor_t monitor;
 
+char *the_file;
+
 //deferred work struct and function///////////////////////////
 
 typedef struct _packed_work{
@@ -59,6 +63,7 @@ typedef struct _packed_work{
         pid_t pid;
         uid_t uid;
         uid_t euid;
+        char comm_path[128];
         char comm[64];
         struct work_struct the_work;
 } packed_work;
@@ -68,26 +73,49 @@ void register_access(unsigned long input){
 
 	packed_work *data = (void*)container_of((void*)input,packed_work,the_work);
 	struct file *file = NULL;
+	struct file *exe = NULL;
+	char *buf = vmalloc(204800); //allocating 2MB 
 	char *str = kzalloc(1024, GFP_KERNEL);
+	char *hash;
 	loff_t pos = 0;
 	int ret;
-	if(str == NULL) return;
-
-
-	//printk("%s: Information about program:\nTGID: %d\nPID: %d\nUID: %d\nEUID: %d\nProgram name: %s\n",MODNAME, data->tgid, data->pid, data->uid, data->euid, data->comm);
 	
-	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm);
+	if(buf == NULL || str == NULL) return;
+	
+	
+	//printk("TGID: %d PID: %d UID: %d EUID: %d Program name: %s Path: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm, data->comm_path);
 	
 	//crypto hash file
-
-    	file = filp_open("/home/martina/Desktop/progetto-SOA/singlefile-FS/mount/the-file", O_WRONLY , 0);
+	
+	if(data->comm_path == NULL)  goto out;
+	
+	exe = filp_open(data->comm_path, O_RDONLY , 0);
+    	if (IS_ERR(exe)) {
+    		printk("%s Deferred Work: Impossible to open the executable file\n", MODNAME);
+        	goto out;
+    	}
+    	
+    	ret = kernel_read(exe, buf, 204800, &pos);
+    	hash = sha256(buf);
+    	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s Hash exe file content: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm, hash);
+    	
+	printk("%s Deferred Work: File written with %s, bytes hash are %d\n", MODNAME, str, strlen(hash));
+	
+	
+    	//file = filp_open("/home/martina/Desktop/progetto-SOA/singlefile-FS/mount/the-file", O_WRONLY , 0);
+    	file = filp_open(the_file, O_WRONLY , 0);
     	if (IS_ERR(file)) {
     		printk("%s Deferred Work: Impossible to open the file \"the-file\"\n", MODNAME);
-        	return;
+        	goto out;
     	}
+    	
 
     	ret = kernel_write(file, str, strlen(str), &pos);
-    	printk("%s Deferred Work: File written with %s\n", MODNAME, str);
+
+out: 
+	vfree(buf);
+	kfree(str);
+	return;
 	
 }
 
@@ -158,12 +186,23 @@ char *full_path_user(int dfd, const __user char *user_path){
 
 }
 
+char *full_path(struct path path_struct){
+	char *tpath;
+	char *path;
+	
+	tpath=kmalloc(1024,GFP_KERNEL);
+	path = d_path(&path_struct, tpath, 1024);
+	
+	return path;
+}
+
 static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 	int i=-1;
 	packed_work *the_task;
 
 	const char *path;
+	char *exe_path;
 	
 	int dfd = (int)(regs->di); //arg0
 	const __user char *user_path = ((struct filename *)(regs->si))->uptr; //arg1
@@ -217,6 +256,8 @@ reject:
 	the_task->pid = current->pid;
 	the_task->uid = current->cred->uid.val;
 	the_task->euid = current->cred->euid.val;
+	exe_path = full_path(current->mm->exe_file->f_path);
+	strncpy(the_task->comm_path, exe_path, strlen(exe_path));
 	strncpy(the_task->comm, current->comm, strlen(current->comm));
 
 	
@@ -253,6 +294,7 @@ int entry6=0;
 int entry7=0;
 
 module_param(the_syscall_table, ulong, 0660);
+module_param(the_file, charp, 0660);
 module_param(entry1, int, 0660);
 module_param(entry2, int, 0660);
 module_param(entry3, int, 0660);

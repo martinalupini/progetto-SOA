@@ -45,6 +45,7 @@ int main (int argc, char *argv[]) {
 	int fd;
 	int i;
 	char *buffer = malloc(256);
+	char *string = "ciao";
 
 	for(i=0; i<7; i++){
 		syscall_entry[i]= atoi(argv[i+1]);
@@ -52,19 +53,20 @@ int main (int argc, char *argv[]) {
 	}
 
 	
-	/*
-	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDONLY);
+	
+	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDWR);
 	if (fd== -1) {
 		perror("Open error: ");
 		exit(-2);
 	}
 
-	read(fd,buffer,256);
+	//read(fd,buffer,256);
+	write(fd, string, strlen(string));
 	
-	printf("%s\n", buffer);
-	*/
+	//printf("%s\n", buffer);
 	
 	
+	/*
 	i =stop_monitor("changeme");
 	if(i<0) printf("error\n");
 	start_monitor("changeme");
@@ -77,7 +79,7 @@ int main (int argc, char *argv[]) {
 
 	
 	add_path("/home/martina/Desktop/file", "ciao");
-	/*
+
 	add_path("/home/martina/Desktop", "prova");
 	rm_path("/home/martina/Desktop", "prova");
 	rm_path("/home/martina/Desktop/progetto-SOA", "prova");
