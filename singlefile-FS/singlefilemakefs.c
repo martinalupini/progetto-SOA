@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	struct onefilefs_inode file_inode;
 	struct onefilefs_dir_record record;
 	char *block_padding;
-	char *file_body = "Wathever content you would like.\n";//this is the default content of the unique file 
+	char *file_body = "ATTEMPS TO WRITE OPEN PROTECTED FILE\n";//this is the default content of the unique file 
 
 	if (argc != 2) {
 		printf("Usage: mkfs-singlefilefs <device>\n");

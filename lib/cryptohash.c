@@ -74,11 +74,11 @@ int auth_pass(char __user *pass, char *real_pass){
 }
 
 
-char *sha256(char *text){
+char *sha256(char *text, size_t size){
 	struct crypto_shash* algorithm;
     	struct shash_desc* desc;
     	int err;
-    	char *digest = kmalloc(HASHSIZE, GFP_KERNEL);
+    	char *digest = kmalloc(HASHSIZE+1, GFP_KERNEL);
     	if(digest == NULL)  return NULL;
     	
     	algorithm = crypto_alloc_shash("sha256", 0, 0);
@@ -102,7 +102,7 @@ char *sha256(char *text){
 	}
 
 	// Execute hash function
-	err = crypto_shash_update(desc, text, strlen(text));
+	err = crypto_shash_update(desc, text, size);
 	if(err) {
     		printk("%s: failed to execute hashing function\n", LIBNAME);
     		goto out;
@@ -119,7 +119,7 @@ char *sha256(char *text){
 	crypto_free_shash(algorithm);
 	kfree(desc);
 
-	printk("%s: String successfully hashed. Content is %s and len is %d\n", LIBNAME, digest, strlen(digest));
+	printk("%s: String successfully hashed\n", LIBNAME);
 
 	return digest;
 
@@ -128,6 +128,3 @@ out: // Manage errors
 	kfree(desc);
 	return NULL;
 }
-
- 
-

@@ -37,6 +37,7 @@ MODULE_DESCRIPTION("This module implements a reference monitor that deny the ope
 //reference monitor//////////////////////////////////////////
 #define MAXSIZE 32
 #define PASS_LENGTH 32 
+#define HASHSIZE 32
 
 
 enum {ON, OFF, RECON, RECOFF};
@@ -78,31 +79,25 @@ void register_access(unsigned long input){
 	char *str = kzalloc(1024, GFP_KERNEL);
 	char *hash;
 	loff_t pos = 0;
-	int ret;
+	int ret, i, len;
 	
 	if(buf == NULL || str == NULL) return;
 	
-	
-	//printk("TGID: %d PID: %d UID: %d EUID: %d Program name: %s Path: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm, data->comm_path);
-	
 	//crypto hash file
-	
 	if(data->comm_path == NULL)  goto out;
 	
 	exe = filp_open(data->comm_path, O_RDONLY , 0);
+	printk("%s: Opened file %s\n", MODNAME, data->comm_path);
     	if (IS_ERR(exe)) {
     		printk("%s Deferred Work: Impossible to open the executable file\n", MODNAME);
         	goto out;
     	}
     	
     	ret = kernel_read(exe, buf, 204800, &pos);
-    	hash = sha256(buf);
+    	hash = sha256(buf, ret);
     	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s Hash exe file content: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm, hash);
     	
-	printk("%s Deferred Work: File written with %s, bytes hash are %d\n", MODNAME, str, strlen(hash));
-	
-	
-    	//file = filp_open("/home/martina/Desktop/progetto-SOA/singlefile-FS/mount/the-file", O_WRONLY , 0);
+    	
     	file = filp_open(the_file, O_WRONLY , 0);
     	if (IS_ERR(file)) {
     		printk("%s Deferred Work: Impossible to open the file \"the-file\"\n", MODNAME);
@@ -111,6 +106,8 @@ void register_access(unsigned long input){
     	
 
     	ret = kernel_write(file, str, strlen(str), &pos);
+    
+    	printk("%s Deferred Work: File written with\n", MODNAME);
 
 out: 
 	vfree(buf);

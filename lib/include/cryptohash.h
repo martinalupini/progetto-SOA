@@ -4,6 +4,6 @@
 
 char *encrypt(char *plaintext, size_t datasize);
 int auth_pass(char __user *pass, char *real_pass);
-char *sha256(char *text);
+char *sha256(char *text, size_t size);
 
 #endif
