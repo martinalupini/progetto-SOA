@@ -107,7 +107,7 @@ void register_access(unsigned long input){
 
     	ret = kernel_write(file, str, strlen(str), &pos);
     
-    	printk("%s Deferred Work: File written with\n", MODNAME);
+    	printk("%s Deferred Work: File written\n", MODNAME);
 
 out: 
 	vfree(buf);
@@ -125,7 +125,6 @@ struct open_flags {
 	int intent;
 	int lookup_flags;
 };
-
 
 char *find_dir(char *path){
 
@@ -172,7 +171,7 @@ char *full_path_user(int dfd, const __user char *user_path){
 	if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
 	error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
 	if(error){
-		printk("%s: File %s does not exist. Error is %d\n", MODNAME, user_path, error);
+		//printk("%s: File %s does not exist. Error is %d\n", MODNAME, user_path, error);
 		kfree(tpath);
 		return NULL;
 	}
@@ -183,6 +182,7 @@ char *full_path_user(int dfd, const __user char *user_path){
 
 }
 
+
 char *full_path(struct path path_struct){
 	char *tpath;
 	char *path;
@@ -191,6 +191,41 @@ char *full_path(struct path path_struct){
 	path = d_path(&path_struct, tpath, 1024);
 	
 	return path;
+}
+
+int isDir(const char *filename){
+	struct path path;
+        int error;
+        struct inode *inode;
+        
+        error=kern_path(filename,LOOKUP_FOLLOW, &path);
+        if(error){
+                return -1;
+        }
+        inode = path.dentry->d_inode;
+        if(S_ISDIR(inode->i_mode)){
+                return 0;
+        }else{
+                return -1;
+        }
+
+
+}
+
+char *get_pwd(void){
+
+	struct path abs_path;
+    	char *buf, *full_path;
+
+	buf = kmalloc(1024,GFP_KERNEL);
+	if(buf == NULL) return NULL;
+
+    	get_fs_pwd(current->fs, &abs_path);
+
+    	full_path = dentry_path_raw(abs_path.dentry, buf, PATH_MAX);
+    	
+    	return full_path;
+
 }
 
 static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
@@ -219,32 +254,38 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 
 	//checking if file is open in write mode
-	if(!(flags & O_RDWR) && !(flags & O_WRONLY) && !mode)  return 0;
+	if(!(flags & O_RDWR) && !(flags & O_WRONLY) && !(flags & (O_CREAT | __O_TMPFILE | O_EXCL )))  return 0;
 	
 	
 	if(user_path == NULL){
 		 path = (char *)real_path;
 	}else{
 		path = full_path_user(dfd, user_path);
+		printk("path is %s", path);
 		if(path == NULL) path = (char *)real_path;
 	}
 	
 	dir = find_dir(path);
-	printk("%s: open in write mode intercepted: file is %s, dir is %s\n",MODNAME, path, dir);
+	if(strcmp(dir, "") ==0 ) dir = get_pwd();
+	
+
+	
+	//printk("%s: open in write mode intercepted: file is %s, dir is %s, comm is %s\n",MODNAME, path, dir, current->comm);
 
 	//if open in write mode checking if its protected
 	for(i=0; i<monitor.last_path ; i++){
-		if(strcmp(monitor.path[i], path) == 0){
-			printk("%s: Current path cannot be opened in write mode. Open in read mode only.\n",MODNAME);
+		if(isDir(real_path)!=0 && strcmp(monitor.path[i], path) == 0){
+			printk("%s: File %s cannot be opened in write mode. Open in read mode only.\n",MODNAME, path);
 			goto reject;
 		}
 	}
 	
-	//if open in creat mode checking if the directory is protected
-	if(mode){
+	//if open in creat mode checking if the directory is protected. If user_path == NULL the file does not exist
+	//if(!(flags & (O_CREAT | __O_TMPFILE | O_EXCL )) || mode){
+	if(!(flags & O_CREAT) || mode){
 		for(i=0; i<monitor.last_path ; i++){
 			if(strcmp(monitor.path[i], dir) == 0){
-				printk("%s: Directory %s cannot be opened in write mode. Open in read mode only.\n",MODNAME, dir);
+				printk("%s: Directory %s cannot be opened in write mode. Write of file %s rejected.\n",MODNAME, dir, path);
 				dir_rejected = 1;
 				goto reject;
 			}
@@ -272,7 +313,10 @@ reject:
 
 	//the filp_open is executed but with flag 0_RDONLY. Any attempt to write will return an error.
 	if(dir_rejected){
-		op_flag->mode = 0;
+		regs->si = (unsigned long)NULL;
+		
+		//op_flag->mode = 0;
+		//op_flag->open_flag = flags ^ (O_CREAT | __O_TMPFILE | O_EXCL);
 	}else{
 		op_flag->open_flag = ((flags ^ O_WRONLY) ^ O_RDWR) | O_RDONLY;
 	}
