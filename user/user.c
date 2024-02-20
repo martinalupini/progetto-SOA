@@ -52,7 +52,11 @@ int main (int argc, char *argv[]) {
 		printf("%d\n", syscall_entry[i]);
 	}
 
-	
+	fd=open("/home/martina/Desktop/progetto-SOA/prova/file.txt", O_RDWR | O_CREAT, S_IRWXU);
+	if (fd== -1) {
+		perror("Creation error: ");
+		exit(-2);
+	}
 	
 	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDWR);
 	if (fd== -1) {

@@ -79,7 +79,7 @@ void register_access(unsigned long input){
 	char *str = kzalloc(1024, GFP_KERNEL);
 	char *hash;
 	loff_t pos = 0;
-	int ret, i, len;
+	int ret;
 	
 	if(buf == NULL || str == NULL) return;
 	
@@ -194,11 +194,10 @@ char *full_path(struct path path_struct){
 }
 
 static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
-	
 	int i=-1;
 	packed_work *the_task;
 
-	const char *path;
+	char *path;
 	char *exe_path;
 	
 	int dfd = (int)(regs->di); //arg0
@@ -206,7 +205,9 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	const char *real_path = ((struct filename *)(regs->si))->name;
 	struct open_flags *op_flag = (struct open_flags *)(regs->dx); //arg2
 	int flags = op_flag->open_flag;
+	unsigned short mode = op_flag->mode;
 	char *dir;
+	int dir_rejected = 0;
 
 	
 	char run[5]; 
@@ -218,17 +219,18 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	
 
 	//checking if file is open in write mode
-	if(!(flags & O_RDWR) && !(flags & O_WRONLY) && !(flags & O_CREAT))  return 0;
+	if(!(flags & O_RDWR) && !(flags & O_WRONLY) && !mode)  return 0;
 	
 	
 	if(user_path == NULL){
-		 path = real_path;
+		 path = (char *)real_path;
 	}else{
 		path = full_path_user(dfd, user_path);
-		if(path == NULL) path = real_path;
+		if(path == NULL) path = (char *)real_path;
 	}
 	
-	printk("%s: open in write mode intercepted: file is %s\n",MODNAME, path);
+	dir = find_dir(path);
+	printk("%s: open in write mode intercepted: file is %s, dir is %s\n",MODNAME, path, dir);
 
 	//if open in write mode checking if its protected
 	for(i=0; i<monitor.last_path ; i++){
@@ -238,11 +240,17 @@ static int open_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 		}
 	}
 	
-	
-	if(flags & O_CREAT){
-		dir = find_dir(path);
-	
+	//if open in creat mode checking if the directory is protected
+	if(mode){
+		for(i=0; i<monitor.last_path ; i++){
+			if(strcmp(monitor.path[i], dir) == 0){
+				printk("%s: Directory %s cannot be opened in write mode. Open in read mode only.\n",MODNAME, dir);
+				dir_rejected = 1;
+				goto reject;
+			}
+		}	
 	}
+	
 	return 0;
 	
 reject:
@@ -263,9 +271,13 @@ reject:
 	schedule_work(&the_task->the_work);
 
 	//the filp_open is executed but with flag 0_RDONLY. Any attempt to write will return an error.
-	op_flag->open_flag = ((flags ^ O_WRONLY) ^ O_RDWR) | O_RDONLY;
-	regs->dx = (unsigned long)op_flag;
+	if(dir_rejected){
+		op_flag->mode = 0;
+	}else{
+		op_flag->open_flag = ((flags ^ O_WRONLY) ^ O_RDWR) | O_RDONLY;
+	}
 
+	regs->dx = (unsigned long)op_flag;
 	return 0;
 
 }
@@ -616,13 +628,13 @@ int init_module(void) {
 	monitor.pass[5]= 0x07;
 	monitor.pass[6]= 0x0a;
 	monitor.pass[7]= 0x15; 
-	//monitor.pass[8] = 0x57;
 	monitor.pass[8] = '\0';
 	
 	
 	monitor.mode = ON;
 	monitor.path[0] = "/home/martina/Desktop/progetto-SOA/user/file.txt";
-	monitor.last_path = 1;
+	monitor.path[1] = "/home/martina/Desktop/progetto-SOA/prova";
+	monitor.last_path = 2;
 	spin_lock_init(&(monitor.lock));
 
 	
