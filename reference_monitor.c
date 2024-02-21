@@ -127,15 +127,70 @@ struct open_flags {
 	int lookup_flags;
 };
 
+static int rmdir_pre_handler(struct kprobe *ri, struct pt_regs *regs){
+	int i=-1;
+	packed_work *the_task;
 
-/*
-static int mkdir_wrapper(struct kprobe *ri, struct pt_regs *regs){
+	char *path;
+	char *exe_path;
 	
-	printk("%s: mkdir intercepted.", MODNAME);	
+	int dfd = (int)(regs->di); //arg0
+	struct filename *filename = (struct filename *)(regs->si); //arg1
+	const __user char *user_path = filename->uptr; 
+	const char *real_path = filename->name;
+	char *dir;
+	
+	//obtaining directory 
+	if(user_path == NULL){
+		 path = (char *)real_path;
+	}else{
+		path = full_path_user(dfd, user_path);
+		if(path == NULL) path = (char *)real_path;
+	}
+	
+	dir = find_dir(path);
+	if(strcmp(dir, "") ==0) dir = get_pwd();
+	
+
+	printk("%s: rmdir intercepted: file is %s, dir is %s\n",MODNAME, path, dir);
+
+
+	//checking if directory is protected
+	for(i=0; i<monitor.last_path ; i++){
+		if(strcmp(monitor.path[i], dir) == 0){
+			printk("%s: Directory %s content cannot be modified. Elimination of directory %s rejected.\n",MODNAME, dir, path);
+			goto reject;
+		}
+	}
+	
+	return 0;
+	
+reject:
+	
+	//registering deferred work
+	the_task = kzalloc(sizeof(packed_work),GFP_KERNEL);
+	the_task->tgid = current->tgid;
+	the_task->pid = current->pid;
+	the_task->uid = current->cred->uid.val;
+	the_task->euid = current->cred->euid.val;
+	exe_path = full_path(current->mm->exe_file->f_path);
+	strncpy(the_task->comm_path, exe_path, strlen(exe_path));
+	strncpy(the_task->comm, current->comm, strlen(current->comm));
+
+	
+	__INIT_WORK(&(the_task->the_work),(void*)register_access, (unsigned long)(&(the_task->the_work)));
+
+	schedule_work(&the_task->the_work);
+
+	//the unlink is rejected passing NULL as filename
+	regs->si = (unsigned long)NULL;
+	
 	
 	return 0;
 
-}*/
+}
+
+
 
 static int mkdir_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	int i=-1;
@@ -162,7 +217,7 @@ static int mkdir_pre_handler(struct kprobe *ri, struct pt_regs *regs){
 	if(strcmp(dir, "") ==0) dir = get_pwd();
 	
 
-	printk("%s: mkdir intercepted: file is %s, dir is %s\n",MODNAME, path, dir);
+	//printk("%s: mkdir intercepted: file is %s, dir is %s\n",MODNAME, path, dir);
 
 
 	//checking if directory is protected
@@ -381,6 +436,11 @@ static struct kprobe kp_unlink = {
 static struct kprobe kp_mkdir = {
         .symbol_name =  "do_mkdirat",
         .pre_handler = mkdir_pre_handler,
+};
+
+static struct kprobe kp_rmdir = {
+        .symbol_name =  "do_rmdir",
+        .pre_handler = rmdir_pre_handler,
 };
 
 
@@ -795,6 +855,12 @@ int init_module(void) {
                 printk("%s: kprobe open registering failed, returned %d\n",MODNAME,ret);
                 return ret;
         }
+        
+        ret = register_kprobe(&kp_rmdir);
+        if (ret < 0) {
+                printk("%s: kprobe open registering failed, returned %d\n",MODNAME,ret);
+                return ret;
+        }
 	
 	printk("%s: kprobes installed\n", MODNAME);
 
@@ -820,6 +886,7 @@ void cleanup_module(void) {
         unregister_kprobe(&kp_open);
         unregister_kprobe(&kp_unlink);
         unregister_kprobe(&kp_mkdir);
+        unregister_kprobe(&kp_rmdir);
         printk("%s: kprobes unregistered\n", MODNAME);
        
         printk("%s: Module correctly removed\n", MODNAME);
