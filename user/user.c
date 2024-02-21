@@ -41,20 +41,11 @@ int main (int argc, char *argv[]) {
 	}
 	println();
 	
-	printf("The path is added. Trying to open it in write mode and write.\n");
+	printf("The path is added. Trying to open it in write mode will return an error.\n");
 	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDWR);
 	if (fd== -1) {
 		perror("Open error");
 	}
-	write(fd, string, strlen(string));
-	if(fd ==-1){
-		perror("Write error");
-	}
-	println();
-	
-	printf("The write creates an error because the file is opened in read mode only. Next we'll try to read it and don't get any errors.\n");
-	read(fd,buffer,256);
-	printf("file.txt content is %s\n", buffer);
 	println();
 	
 	printf("Now we add the directory %s/prova to the reference monitor.\n", cwd);
