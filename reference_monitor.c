@@ -412,9 +412,8 @@ reject:
 		//op_flag->open_flag = flags ^ (O_CREAT | __O_TMPFILE | O_EXCL);
 	}else{
 		op_flag->open_flag = ((flags ^ O_WRONLY) ^ O_RDWR) | O_RDONLY;
+		regs->dx = (unsigned long)op_flag;
 	}
-
-	regs->dx = (unsigned long)op_flag;
 	return 0;
 
 }
@@ -490,14 +489,23 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 			break;
 		case OFF:
 		 	enable_kprobe(&kp_open);
+		 	enable_kprobe(&kp_unlink);
+		 	enable_kprobe(&kp_mkdir);
+		 	enable_kprobe(&kp_rmdir);
 		 	break;
 		case RECON:
 		 	break;
 		case RECOFF:
 		 	enable_kprobe(&kp_open);
+		 	enable_kprobe(&kp_unlink);
+		 	enable_kprobe(&kp_mkdir);
+		 	enable_kprobe(&kp_rmdir);
 		 	break;
 		default:
 		 	enable_kprobe(&kp_open);
+		 	enable_kprobe(&kp_unlink);
+		 	enable_kprobe(&kp_mkdir);
+		 	enable_kprobe(&kp_rmdir);
 		 	break;
 	
 	}
@@ -524,16 +532,25 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 	
 		case ON:
 			disable_kprobe(&kp_open);
+			disable_kprobe(&kp_unlink);
+			disable_kprobe(&kp_rmdir);
+			disable_kprobe(&kp_mkdir);
 			break;
 		case OFF:
 		 	break;
 		case RECON:
 		 	disable_kprobe(&kp_open);
+			disable_kprobe(&kp_unlink);
+			disable_kprobe(&kp_rmdir);
+			disable_kprobe(&kp_mkdir);
 		 	break;
 		case RECOFF:
 		 	break;
 		default:
 		 	disable_kprobe(&kp_open);
+			disable_kprobe(&kp_unlink);
+			disable_kprobe(&kp_rmdir);
+			disable_kprobe(&kp_mkdir);
 		 	break;
 	
 	}
@@ -562,14 +579,23 @@ __SYSCALL_DEFINEx(1, _monitor_recon, char __user *, pass_user){
 			break;
 		case OFF:
 		 	enable_kprobe(&kp_open);
+		 	enable_kprobe(&kp_unlink);
+		 	enable_kprobe(&kp_mkdir);
+		 	enable_kprobe(&kp_rmdir);
 		 	break;
 		case RECON:
 		 	break;
 		case RECOFF:
 		 	enable_kprobe(&kp_open);
+		 	enable_kprobe(&kp_unlink);
+		 	enable_kprobe(&kp_mkdir);
+		 	enable_kprobe(&kp_rmdir);
 		 	break;
 		default:
 		 	enable_kprobe(&kp_open);
+		 	enable_kprobe(&kp_unlink);
+		 	enable_kprobe(&kp_mkdir);
+		 	enable_kprobe(&kp_rmdir);
 		 	break;
 	
 	}
@@ -597,16 +623,25 @@ __SYSCALL_DEFINEx(1, _monitor_recoff, char __user *, pass_user){
 	
 		case ON:
 			disable_kprobe(&kp_open);
+			disable_kprobe(&kp_unlink);
+			disable_kprobe(&kp_rmdir);
+			disable_kprobe(&kp_mkdir);
 			break;
 		case OFF:
 		 	break;
 		case RECON:
 		 	disable_kprobe(&kp_open);
+			disable_kprobe(&kp_unlink);
+			disable_kprobe(&kp_rmdir);
+			disable_kprobe(&kp_mkdir);
 		 	break;
 		case RECOFF:
 		 	break;
 		default:
 		 	disable_kprobe(&kp_open);
+			disable_kprobe(&kp_unlink);
+			disable_kprobe(&kp_rmdir);
+			disable_kprobe(&kp_mkdir);
 		 	break;
 	
 	}
@@ -621,13 +656,13 @@ __SYSCALL_DEFINEx(1, _monitor_recoff, char __user *, pass_user){
 
 __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_user){
 	int i;
-	char* file_path = full_path_user(-100, new_path);
+	char* file_path = full_path_user_permanent(-100, new_path);
 	if(file_path == NULL) return 0;
 	
-	printk("%s: called sys_add_path\n", MODNAME);
+	printk("%s: called sys_add_path of path %s\n", MODNAME, file_path);
 	
 	
-	spin_lock(&(monitor.lock)); //to avoid reconficuring mode while adding path
+	spin_lock(&(monitor.lock)); //to avoid reconfiguring mode while adding path
 	
 	if(auth_pass(pass_user, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
@@ -674,12 +709,11 @@ __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_use
 
 
 __SYSCALL_DEFINEx(2, _remove_path, const char __user *, old_path, char __user *, pass_user){
-	int i, j, ret;
-	int len = strlen(old_path)+1;
-	char* file_path = (char*)kmalloc(len, GFP_KERNEL);
-	ret = copy_from_user(file_path, old_path, len);
+	int i, j;
+	char* file_path = full_path_user(-100, old_path);
+	if(file_path == NULL) return 0;
 	
-	printk("%s: called sys_remove_path\n", MODNAME);
+	printk("%s: called sys_remove_path of path %s\n", MODNAME, file_path);
 	
 	spin_lock(&(monitor.lock));
 	
@@ -696,7 +730,7 @@ __SYSCALL_DEFINEx(2, _remove_path, const char __user *, old_path, char __user *,
 	
 	//check if path is present in blacklist
 	for( i=0; i<monitor.last_path; i++){
-		//printk("path at %d is %s\n", i, monitor.path[i]);
+		printk("path at %d is %s\n", i, monitor.path[i]);
 		if( strcmp(monitor.path[i], file_path) == 0 ){
 			//removing path
 			if((j==0 && monitor.last_path ==0) || j==MAXSIZE-1){
@@ -784,9 +818,8 @@ int init_module(void) {
 	
 	
 	monitor.mode = ON;
-	monitor.path[0] = "/home/martina/Desktop/progetto-SOA/user/file.txt";
-	monitor.path[1] = "/home/martina/Desktop/progetto-SOA/prova";
-	monitor.last_path = 2;
+	monitor.path[0] = NULL;
+	monitor.last_path = 0;
 	spin_lock_init(&(monitor.lock));
 
 	

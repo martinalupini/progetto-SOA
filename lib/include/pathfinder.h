@@ -7,6 +7,7 @@ char *full_path_user(int dfd, const __user char *user_path);
 char *full_path(struct path path_struct);
 int isDir(const char *filename);
 char *get_pwd(void);
+char *full_path_user_permanent(int dfd, const __user char *user_path);
 
 
 #endif

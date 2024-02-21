@@ -79,6 +79,28 @@ char *full_path_user(int dfd, const __user char *user_path){
 }
 
 
+char *full_path_user_permanent(int dfd, const __user char *user_path){
+	struct path path_struct;
+	char *tpath;
+	char *path;
+	int error = -EINVAL,flag=0;
+	unsigned int lookup_flags = 0;
+
+	tpath=kmalloc(1024,GFP_KERNEL);
+	if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
+	error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
+	if(error){
+		//printk("%s: File %s does not exist. Error is %d\n", MODNAME, user_path, error);
+		kfree(tpath);
+		return NULL;
+	}
+	
+	path = d_path(&path_struct, tpath, 1024);		
+	return path;
+
+}
+
+
 char *full_path(struct path path_struct){
 	char *tpath;
 	char *path;
