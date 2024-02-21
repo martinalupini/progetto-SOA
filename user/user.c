@@ -5,101 +5,103 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "syscallsCLI/lib/include/refmonitor.h"
 
-
-char *string = "ciao\n";
-
-int syscall_entry[7];
-
-int start_monitor(char *pass){
-	return syscall(syscall_entry[0],pass);
-}
-
-int stop_monitor(char *pass){
-	return syscall(syscall_entry[1],pass);
-}
-
-int recon(char *pass){
-	return syscall(syscall_entry[2],pass);
-}
-
-int recoff(char *pass){
-	return syscall(syscall_entry[3],pass);
-}
-
-int add_path(char *path, char *pass){
-	return syscall(syscall_entry[4],path, pass);
-}
-
-int rm_path(char *path, char *pass){
-	return syscall(syscall_entry[5],path, pass);
-}
-
-int change_pass(char *new_pass, char *old_pass){
-	return syscall(syscall_entry[6],new_pass, old_pass);
-}
-
+#define println() printf("\n")
 
 int main (int argc, char *argv[]) {
 
 	int fd;
-	int i;
+	int ret;
 	char *buffer = malloc(256);
 	char *string = "ciao";
-
-	for(i=0; i<7; i++){
-		syscall_entry[i]= atoi(argv[i+1]);
-		printf("%d\n", syscall_entry[i]);
-	}
-
-	fd=open("/home/martina/Desktop/progetto-SOA/prova/file.txt", O_RDWR | O_CREAT, 0777);
-	if (fd== -1) {
-		perror("Creation error: ");
-		exit(-2);
-	}
+	char cwd[1024];
 	
+	getcwd(cwd, sizeof(cwd));
+	
+	if(geteuid() != 0){
+		printf("Please run the test as root user.\n");
+		return 0;
+	}
+
+	printf("\033[1;36mREFERENCE MONITOR SUBSYSTEM DEMONSTRATION\033[1;0m\n");
+	
+	printf("The monitor is now ON but no file or directory are blacklisted. Calling recon to change status to REC-ON.\n");
+	ret = recon("changeme");
+	if(ret <0){
+		printf("\033[1;31mrecon error: Password uncorrect or non-root user.\033[1;0m\n");
+	}
+	println();
+	
+	
+	printf("Now the monitor is in REC-ON. Adding the file %s/file.txt to the reference monitor's list.\nNOTE: the system calls add_path and remove_path can use both relative and absolute path.\n", cwd);
+	ret = add_path("file.txt", "changeme");
+	if(ret <0){
+		printf("\033[1;31madd_path error: Password incorrect, non-root user or reference monitor not in REC-ON or REC-OFF.\033[1;0m\n");
+	}
+	println();
+	
+	printf("The path is added. Trying to open it in write mode and write.\n");
 	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDWR);
 	if (fd== -1) {
-		perror("Open error: ");
-		exit(-2);
+		perror("Open error");
 	}
-
-	//read(fd,buffer,256);
 	write(fd, string, strlen(string));
-	
-	//printf("%s\n", buffer);
-	
-	
-	/*
-	i =stop_monitor("changeme");
-	if(i<0) printf("error\n");
-	start_monitor("changeme");
-	
-	recon("changeme");
-	i=add_path("../singlefile-FS/mount/the-file", "changeme");
-	if(i<0) printf("error adding file\n");
-	add_path("/home/martina/Desktop", "changeme");
-	i=change_pass("ciao", "changeme");
-
-	
-	add_path("/home/martina/Desktop/file", "ciao");
-
-	add_path("/home/martina/Desktop", "prova");
-	rm_path("/home/martina/Desktop", "prova");
-	rm_path("/home/martina/Desktop/progetto-SOA", "prova");
-	rm_path("/home/martina/Desktop/file", "prova");
-	rm_path("/home/martina/Desktop/progetto-SOA/file", "prova");
-	i = rm_path("/home/martina/Desktop/file", "prova");
-	if(i<0){
-		printf("Path not present or wrong password\n");
+	if(fd ==-1){
+		perror("Write error");
 	}
+	println();
+	
+	printf("The write creates an error because the file is opened in read mode only. Next we'll try to read it and don't get any errors.\n");
+	read(fd,buffer,256);
+	printf("file.txt content is %s\n", buffer);
+	println();
+	
+	printf("Now we add the directory %s/prova to the reference monitor.\n", cwd);
+	ret = add_path("prova", "changeme");
+	if(ret <0){
+		printf("\033[1;31madd_path error: Password incorrect, non-root user or reference monitor not in REC-ON or REC-OFF.\033[1;0m\n");
+	}
+	println();
+	
+	printf("Now we remove the path %s/file.txt\n", cwd);
+	ret = rm_path("file.txt", "changeme");
+	if(ret <0){
+		printf("\033[1;31mrm_path error: Path not present, Password incorrect, non-root user or reference monitor not in REC-ON or REC-OFF.\033[1;0m\n");
+	}
+	println();
+	
+	printf("If we try to remove a path that is not currently in the reference monitor we'll get an error. For example let's remove /home\n"); 
+	ret = rm_path("/home", "changeme");
+	if(ret <0){
+		printf("\033[1;31mrm_path error: Path not present, Password incorrect, non-root user or reference monitor not in REC-ON or REC-OFF.\033[1;0m\n");
+	}
+	println();
+	
+	
+	printf("Now we set the monitor status to OFF. If we call add_path we'll get an error\n");
+	ret = stop_monitor("changeme");
+	if(ret <0){
+		printf("\033[1;31mstop_monitor error: Password uncorrect or non-root user.\033[1;0m\n");
+	}
+	ret = add_path("prova", "changeme");
+	if(ret <0){
+		printf("add_path error: Password incorrect, non-root user or reference monitor not in REC-ON or REC-OFF.\n");
+	}
+	println();
 	
 	seteuid(1000);
-	i = stop_monitor("prova");
-	if(i<0){
-		printf("Not root user or wrong password\n");
-	}*/
 	
+	printf("Now we set euid to user 1000. If we try to start the monitor we'll get an error because is not called by the root user\n");
+	ret = recon("changeme");
+	if(ret <0){
+		printf("\033[1;31mstart_monitor error: Password uncorrect or non-root user.\033[1;0m\n");
+	}
+	println();
+	
+	printf("\033[1;36mThe demonstration is terminated. If you would like you can test the reference monitor's system calls via CLI using the executable provided.\033[1;0m\n");
+
+
 	return 0;
 }
 

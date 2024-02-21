@@ -21,7 +21,7 @@ int main (int argc, char *argv[]) {
 	
 	ret = add_path(argv[1], argv[2]);
 	if(ret <0){
-		printf("\033[1;31madd_path error: Path not present, Password incorrect, non-root user or reference monitor not in REC-ON or REC-OFF.\033[1;0m\n");
+		printf("\033[1;31madd_path error: Path does not exists, password incorrect, non-root user or reference monitor not in REC-ON or REC-OFF.\033[1;0m\n");
 	}
 	
 	return 0;
