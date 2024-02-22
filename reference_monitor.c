@@ -844,6 +844,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	
 	len = strlen(new_pass);
 	new = kmalloc(len+1, GFP_KERNEL);
+	if(new == NULL) return -1;
 	ret = copy_from_user(new, new_pass, len+1);
 	
 	if(strcmp(new, "") ==0){
@@ -859,6 +860,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	 }
 	
 	new = encrypt(new, len);
+	if(new == NULL) return -1;
 	memcpy(monitor.pass, new, len+1);
 	
 	spin_unlock(&(monitor.lock));

@@ -34,6 +34,7 @@ char *find_dir(char *path){
 
 	int i= strlen(path)-1;
 	char *new_string = kmalloc(strlen(path), GFP_KERNEL);
+	if(new_string == NULL)  return "";
 	
 	while(i>=0){
 		if(path[i] != '/'){ 
@@ -64,6 +65,7 @@ char *full_path_user(int dfd, const __user char *user_path){
 	unsigned int lookup_flags = 0;
 
 	tpath=kmalloc(1024,GFP_KERNEL);
+	if(tpath == NULL)  return NULL;
 	if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
 	error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
 	if(error){
@@ -87,6 +89,7 @@ char *full_path_user_permanent(int dfd, const __user char *user_path){
 	unsigned int lookup_flags = 0;
 
 	tpath=kmalloc(1024,GFP_KERNEL);
+	if(tpath == NULL) return NULL;
 	if (!(flag & AT_SYMLINK_NOFOLLOW))    lookup_flags |= LOOKUP_FOLLOW;
 	error = user_path_at(dfd, user_path, lookup_flags, &path_struct);
 	if(error){
@@ -106,6 +109,7 @@ char *full_path(struct path path_struct){
 	char *path;
 	
 	tpath=kmalloc(1024,GFP_KERNEL);
+	if(tpath == NULL)  return "";
 	path = d_path(&path_struct, tpath, 1024);
 	
 	return path;
@@ -136,7 +140,7 @@ char *get_pwd(void){
     	char *buf, *full_path;
 
 	buf = kmalloc(1024,GFP_KERNEL);
-	if(buf == NULL) return NULL;
+	if(buf == NULL) return "";
 
     	get_fs_pwd(current->fs, &abs_path);
 
