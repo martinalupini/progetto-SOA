@@ -837,7 +837,7 @@ __SYSCALL_DEFINEx(2, _remove_path, const char __user *, old_path, char __user *,
 	char *try;
 	int ret;
 	
-	char* file_path = full_path_user(-100, old_path);
+	char* file_path = full_path_user_permanent(-100, old_path);
 	if(file_path == NULL) return -1;
 	
 	try = kmalloc(1024, GFP_KERNEL);
