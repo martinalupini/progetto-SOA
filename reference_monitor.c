@@ -494,15 +494,26 @@ int restore[HACKED_ENTRIES] = {[0 ... (HACKED_ENTRIES-1)] -1};
 *
 */
 __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
+	char *try;
+	int ret;
 	
 	printk("%s: called sys_start_monitor\n", MODNAME);
 	
+	try = kmalloc(1024, GFP_KERNEL);
+	if(try ==NULL)  return -1;
+	
+	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	printk("try is %s", try);
+	
 	spin_lock(&(monitor.lock));
 	
-	if(auth_pass(pass_user, monitor.pass) != 0 || get_euid() != 0){
+	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
+		kfree(try);
 	 	return -1;
 	 }
+	
+	kfree(try);
 	
 	switch(monitor.mode) {
 	
@@ -546,15 +557,26 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 *
 */
 __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
+	char *try;
+	int ret;
 
 	printk("%s: called sys_stop_monitor\n", MODNAME);
 	
+	try = kmalloc(1024, GFP_KERNEL);
+	if(try ==NULL)  return -1;
+	
+	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	printk("try is %s", try);
+	
 	spin_lock(&(monitor.lock));
 	
-	if(auth_pass(pass_user, monitor.pass) != 0 || get_euid() != 0){
+	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
+		kfree(try);
 	 	return -1;
 	 }
+	 
+	 kfree(try);
 	
 	switch(monitor.mode) {
 	
@@ -599,15 +621,25 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 *
 */
 __SYSCALL_DEFINEx(1, _monitor_recon, char __user *, pass_user){
+	char *try;
+	int ret;
 
 	printk("%s: called sys_monitor_recon\n", MODNAME);
 	
+	try = kmalloc(1024, GFP_KERNEL);
+	if(try ==NULL)  return -1;
+	
+	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	
 	spin_lock(&(monitor.lock));
 	
-	if(auth_pass(pass_user, monitor.pass) != 0 || get_euid() != 0){
+	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
+		kfree(try);
 	 	return -1;
 	 }
+	 
+	 kfree(try);
 	
 	switch(monitor.mode) {
 	
@@ -652,16 +684,25 @@ __SYSCALL_DEFINEx(1, _monitor_recon, char __user *, pass_user){
 *
 */
 __SYSCALL_DEFINEx(1, _monitor_recoff, char __user *, pass_user){
-
+	char *try;
+	int ret;
 	
 	printk("%s: called sys_monitor_recoff\n", MODNAME);
 	
+	try = kmalloc(1024, GFP_KERNEL);
+	if(try ==NULL)  return -1;
+	
+	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	
 	spin_lock(&(monitor.lock));
 	
-	if(auth_pass(pass_user, monitor.pass) != 0 || get_euid() != 0){
+	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
+		kfree(try);
 	 	return -1;
 	 }
+	 
+	 kfree(try);
 	
 	switch(monitor.mode) {
 	
@@ -715,18 +756,29 @@ __SYSCALL_DEFINEx(1, _monitor_recoff, char __user *, pass_user){
 */
 __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_user){
 	int i;
+	char *try;
+	int ret;
+		
 	char* file_path = full_path_user_permanent(-100, new_path);
 	if(file_path == NULL) return -1;
+	
+	try = kmalloc(1024, GFP_KERNEL);
+	if(try ==NULL)  return -1;
+	
+	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
 	
 	printk("%s: called sys_add_path of path %s\n", MODNAME, file_path);
 	
 	//to avoid reconfiguring mode while adding path
 	spin_lock(&(monitor.lock)); 
 	
-	if(auth_pass(pass_user, monitor.pass) != 0 || get_euid() != 0){
+	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
+		kfree(try);
 	 	return -1;
 	 }
+	 
+	 kfree(try);
 	
 	//check if currently in RECON or RECOFF
 	if(monitor.mode == OFF || monitor.mode == ON){
@@ -782,17 +834,28 @@ __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_use
 */
 __SYSCALL_DEFINEx(2, _remove_path, const char __user *, old_path, char __user *, pass_user){
 	int i, j;
+	char *try;
+	int ret;
+	
 	char* file_path = full_path_user(-100, old_path);
 	if(file_path == NULL) return -1;
+	
+	try = kmalloc(1024, GFP_KERNEL);
+	if(try ==NULL)  return -1;
+	
+	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
 	
 	printk("%s: called sys_remove_path of path %s\n", MODNAME, file_path);
 	
 	spin_lock(&(monitor.lock));
 	
-	if(auth_pass(pass_user, monitor.pass) != 0 || get_euid() != 0){
+	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
+		kfree(try);
 	 	return -1;
 	 }
+	 
+	 kfree(try);
 	
 	//check if currently in RECON or RECOFF
 	if(monitor.mode == OFF || monitor.mode == ON){
@@ -839,10 +902,12 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	size_t len;
 	char *new;
 	int ret;
-
+	char *try;
+	int ret2;
+	
 	printk("%s: called sys_change_pass\n", MODNAME);
 	
-	len = strlen(new_pass);
+	len = sizeof(new_pass);
 	new = kmalloc(len+1, GFP_KERNEL);
 	if(new == NULL) return -1;
 	ret = copy_from_user(new, new_pass, len+1);
@@ -851,13 +916,22 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 		kfree(new);
 	 	return -1;
 	 }
+	 
+	 try = kmalloc(1024, GFP_KERNEL);
+	if(try ==NULL)  return -1;
+	
+	ret2 = copy_from_user(try, old_pass, sizeof(old_pass)+1);
+
 	
 	spin_lock(&(monitor.lock));
 	
-	if(auth_pass(old_pass, monitor.pass) != 0 || get_euid() != 0){
+	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
 		spin_unlock(&(monitor.lock));
+		kfree(try);
 	 	return -1;
 	 }
+	 
+	 kfree(try);
 	
 	new = encrypt(new, len);
 	if(new == NULL) return -1;

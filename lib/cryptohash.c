@@ -56,23 +56,17 @@ char *encrypt(char *plaintext, size_t datasize){
    
 } 
 
-int auth_pass(char __user *pass, char *real_pass){
+int auth_pass(char *pass, char *real_pass){
 
-	int ret;
 	size_t len = strlen(pass);
-	char *try = kmalloc(len+1, GFP_KERNEL);
-	if(try ==NULL)  return -1;
 	
-	ret = copy_from_user(try, pass, len+1);
+	pass = encrypt(pass, len);
+	if(pass == NULL)  return -1;
 	
-	try = encrypt(try, len);
-	if(try == NULL)  return -1;
-	
-	if(strcmp(real_pass, try) == 0){
-		kfree(try);
+	if(strcmp(real_pass, pass) == 0){
 		return 0;
 	}
-	kfree(try);
+	
 	return -1;
 }
 
