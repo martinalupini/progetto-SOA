@@ -907,21 +907,23 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	
 	printk("%s: called sys_change_pass\n", MODNAME);
 	
-	len = sizeof(new_pass);
-	new = kmalloc(len+1, GFP_KERNEL);
+	
+	new = kmalloc(1024, GFP_KERNEL);
 	if(new == NULL) return -1;
-	ret = copy_from_user(new, new_pass, len+1);
+	ret = copy_from_user(new, new_pass, sizeof(new_pass)+1);
 	
 	if(strcmp(new, "") ==0){
 		kfree(new);
 	 	return -1;
 	 }
 	 
+	 len= strlen(new);
 	 try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
 	ret2 = copy_from_user(try, old_pass, sizeof(old_pass)+1);
-
+	
+	printk("new pass is %s, len is %ld", new, len);
 	
 	spin_lock(&(monitor.lock));
 	
@@ -936,6 +938,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	new = encrypt(new, len);
 	if(new == NULL) return -1;
 	memcpy(monitor.pass, new, len+1);
+	printk("encryption is %s and copied is %s", new, monitor.pass);
 	
 	spin_unlock(&(monitor.lock));
 	
