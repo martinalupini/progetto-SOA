@@ -17,4 +17,4 @@ content="#ifndef _ENTRIES_\n\n#define _ENTRIES_\n\n#define ENTRY1 $entry1\n#defi
 cd user/syscallsCLI/lib/include
 echo -e "$content" > entries.h
 
-echo "il file header è stato scritto"
+echo "The header file has been written"

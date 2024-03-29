@@ -501,19 +501,22 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 	
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
-	
+	printk("**********0************");
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
-	printk("try is %s", try);
-	
+	printk("**********1************");
 	spin_lock(&(monitor.lock));
-	
+	printk("**********2************");
 	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
-		spin_unlock(&(monitor.lock));
+		printk("**********2.1************");
 		kfree(try);
+		printk("**********2.2************");
+		spin_unlock(&(monitor.lock));
+		printk("**********2.3************");
 	 	return -1;
 	 }
-	
+	printk("**********3************");
 	kfree(try);
+	printk("**********3.1************");
 	
 	switch(monitor.mode) {
 	
@@ -521,9 +524,13 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 			break;
 		case OFF:
 		 	enable_kprobe(&kp_open);
+		 	printk("**********4.1************");
 		 	enable_kprobe(&kp_unlink);
+		 	printk("**********4.2************");
 		 	enable_kprobe(&kp_mkdir);
+		 	printk("**********4.3************");
 		 	enable_kprobe(&kp_rmdir);
+		 	printk("**********4.4************");
 		 	break;
 		case RECON:
 		 	break;
@@ -541,10 +548,10 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 		 	break;
 	
 	}
-	
+	printk("**********5************");
 	monitor.mode = ON;
 	spin_unlock(&(monitor.lock));
-	
+	printk("**********6************");
 	printk("%s: Monitor is now ON\n", MODNAME);
 	return 0;
 }
@@ -564,27 +571,33 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 	
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
-	
+	printk("**********000************");
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
-	printk("try is %s", try);
-	
+	printk("**********111************");
 	spin_lock(&(monitor.lock));
-	
+	printk("**********222************");
 	if(auth_pass(try, monitor.pass) != 0 || get_euid() != 0){
+		printk("**********2.1************");
 		spin_unlock(&(monitor.lock));
+		printk("**********2.2************");
 		kfree(try);
+		printk("**********2.3************");
 	 	return -1;
 	 }
-	 
+	 printk("**********333************");
 	 kfree(try);
-	
+	printk("**********444************");
 	switch(monitor.mode) {
 	
 		case ON:
 			disable_kprobe(&kp_open);
+			printk("**********4.1************");
 			disable_kprobe(&kp_unlink);
+			printk("**********4.2************");
 			disable_kprobe(&kp_rmdir);
+			printk("**********4.3************");
 			disable_kprobe(&kp_mkdir);
+			printk("**********4.4************");
 			break;
 		case OFF:
 		 	break;
@@ -604,10 +617,10 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 		 	break;
 	
 	}
-	
+	printk("**********5************");
 	monitor.mode = OFF;
 	spin_unlock(&(monitor.lock));
-	
+	printk("**********6************");
 	printk("%s: Monitor is now OFF\n", MODNAME);
 	return 0;
 }
