@@ -14,10 +14,7 @@ output="entries.h"
 content="#ifndef _ENTRIES_\n\n#define _ENTRIES_\n\n#define ENTRY1 $entry1\n#define ENTRY2 $entry2\n#define ENTRY3 $entry3\n#define ENTRY4 $entry4\n#define ENTRY5 $entry5\n#define ENTRY6 $entry6\n#define ENTRY7 $entry7\n\n#endif"
 
 
-cd user/syscallsCLI/lib/include
-if ! test entries.h; then 
-	echo -e "$content" > entries.h 
+if ! test user/syscallsCLI/lib/include/entries.h; then 
+	echo -e "$content" > user/syscallsCLI/lib/include/entries.h 
 	echo "The header file has been written"
 fi
-
-
