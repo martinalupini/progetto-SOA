@@ -1,5 +1,6 @@
 #include <stdio.h> 
 #include <pthread.h> 
+#include <string.h>
 #include "syscallsCLI/lib/include/refmonitor.h"
  
 #define NUM_THREADS 3 
@@ -46,11 +47,12 @@ int main() {
     printf("Creating thread #%ld\n", t); 
     rc = pthread_create(&threads[t], NULL, start_the_monitor, (void *)t); 
     if (rc) { 
-            printf("Error: %d\n", rc); 
+            printf("Error: %s\n", strerror(rc)); 
             return -1; 
     }
     
     
+    t++;
     printf("Creating thread #%ld\n", t); 
     rc = pthread_create(&threads[t], NULL, stop_the_monitor, (void *)t); 
     if (rc) { 
@@ -58,7 +60,7 @@ int main() {
             return -1; 
     }
     
-    
+    t++;
     printf("Creating thread #%ld\n", t); 
     rc = pthread_create(&threads[t], NULL, recon_monitor, (void *)t); 
     if (rc) { 

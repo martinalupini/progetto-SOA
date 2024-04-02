@@ -38,21 +38,21 @@ char *encrypt(char *plaintext, size_t datasize){
 	int i;
 	char *ciphertext;
     	//printk("%s: Encryption started\n", LIBNAME);
-    	printk("auth 0");
+    	
     	ciphertext = kmalloc(datasize, GFP_KERNEL);
-    	printk("auth 1");
+    	
     	if(ciphertext == NULL){
     		printk("%s: kmalloc cipertext failed\n", LIBNAME);
       		return NULL;
     	}
     	memset(ciphertext, 0, datasize);
-    	printk("auth 2");
+    	
   	for(i=0; i<datasize; i++){
 
   	 	ciphertext[i] = plaintext[i] ^ keystream[i];
   	}
   	ciphertext[i]='\0';
-  	 printk("auth 3");
+  	
   	return ciphertext;
    
    
