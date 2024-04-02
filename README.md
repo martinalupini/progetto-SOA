@@ -2,16 +2,18 @@
 
 ## Getting started
 
-To clone the repository and also the submodule run:
-
-`git clone --recurse-submodules https://github.com/martinalupini/progetto-SOA`
+> [!CAUTION]
+>To clone the repository and also the submodule run:
+>```
+>git clone --recurse-submodules https://github.com/martinalupini/progetto-SOA
+>```
 
 After cloning the repository, open a terminal in the directory Progetto-SOA/. 
 Execute the script **load.sh** as root user to mount the module.
 
-`chmod +x load.sh`
-
-`./load.sh`
+```
+./load.sh
+```
 
 After mounting the module, the monitor will be ON. At startup the monitor does not have paths to protect. The default password is **changeme**.
 
