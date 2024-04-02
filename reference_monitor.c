@@ -502,6 +502,7 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	if(ret != 0) return -1;
 	
 	spin_lock(&(monitor.lock));
 	
@@ -518,19 +519,7 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 	
 		case ON:
 			break;
-		case OFF:
-		 	enable_kprobe(&kp_open);
-		 	enable_kprobe(&kp_unlink);
-		 	enable_kprobe(&kp_mkdir);
-		 	enable_kprobe(&kp_rmdir);
-		 	break;
 		case RECON:
-		 	break;
-		case RECOFF:
-		 	enable_kprobe(&kp_open);
-		 	enable_kprobe(&kp_unlink);
-		 	enable_kprobe(&kp_mkdir);
-		 	enable_kprobe(&kp_rmdir);
 		 	break;
 		default:
 		 	enable_kprobe(&kp_open);
@@ -565,6 +554,7 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 	if(try ==NULL)  return -1;
 	
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	if(ret != 0) return -1;
 
 	spin_lock(&(monitor.lock));
 	
@@ -578,19 +568,7 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 	
 	switch(monitor.mode) {
 	
-		case ON:
-			disable_kprobe(&kp_open);
-			disable_kprobe(&kp_unlink);
-			disable_kprobe(&kp_rmdir);
-			disable_kprobe(&kp_mkdir);
-			break;
 		case OFF:
-		 	break;
-		case RECON:
-		 	disable_kprobe(&kp_open);
-			disable_kprobe(&kp_unlink);
-			disable_kprobe(&kp_rmdir);
-			disable_kprobe(&kp_mkdir);
 		 	break;
 		case RECOFF:
 		 	break;
@@ -628,6 +606,7 @@ __SYSCALL_DEFINEx(1, _monitor_recon, char __user *, pass_user){
 	if(try ==NULL)  return -1;
 	
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	if(ret != 0) return -1;
 	
 	spin_lock(&(monitor.lock));
 	
@@ -643,19 +622,7 @@ __SYSCALL_DEFINEx(1, _monitor_recon, char __user *, pass_user){
 	
 		case ON:
 			break;
-		case OFF:
-		 	enable_kprobe(&kp_open);
-		 	enable_kprobe(&kp_unlink);
-		 	enable_kprobe(&kp_mkdir);
-		 	enable_kprobe(&kp_rmdir);
-		 	break;
 		case RECON:
-		 	break;
-		case RECOFF:
-		 	enable_kprobe(&kp_open);
-		 	enable_kprobe(&kp_unlink);
-		 	enable_kprobe(&kp_mkdir);
-		 	enable_kprobe(&kp_rmdir);
 		 	break;
 		default:
 		 	enable_kprobe(&kp_open);
@@ -691,6 +658,7 @@ __SYSCALL_DEFINEx(1, _monitor_recoff, char __user *, pass_user){
 	if(try ==NULL)  return -1;
 	
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	if(ret != 0) return -1;
 	
 	spin_lock(&(monitor.lock));
 	
@@ -704,19 +672,7 @@ __SYSCALL_DEFINEx(1, _monitor_recoff, char __user *, pass_user){
 	
 	switch(monitor.mode) {
 	
-		case ON:
-			disable_kprobe(&kp_open);
-			disable_kprobe(&kp_unlink);
-			disable_kprobe(&kp_rmdir);
-			disable_kprobe(&kp_mkdir);
-			break;
 		case OFF:
-		 	break;
-		case RECON:
-		 	disable_kprobe(&kp_open);
-			disable_kprobe(&kp_unlink);
-			disable_kprobe(&kp_rmdir);
-			disable_kprobe(&kp_mkdir);
 		 	break;
 		case RECOFF:
 		 	break;
@@ -764,6 +720,7 @@ __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_use
 	if(try ==NULL)  return -1;
 	
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	if(ret != 0) return -1;
 	
 	printk("%s: called sys_add_path of path %s\n", MODNAME, file_path);
 	
@@ -842,6 +799,7 @@ __SYSCALL_DEFINEx(2, _remove_path, const char __user *, old_path, char __user *,
 	if(try ==NULL)  return -1;
 	
 	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	if(ret != 0) return -1;
 	
 	printk("%s: called sys_remove_path of path %s\n", MODNAME, file_path);
 	
@@ -909,6 +867,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	new = kmalloc(1024, GFP_KERNEL);
 	if(new == NULL) return -1;
 	ret = copy_from_user(new, new_pass, sizeof(new_pass)+1);
+	if(ret != 0) return -1;
 	
 	if(strcmp(new, "") ==0){
 		kfree(new);
