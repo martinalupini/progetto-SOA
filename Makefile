@@ -4,8 +4,8 @@
 obj-m += the_reference_monitor.o 
 the_reference_monitor-objs += reference_monitor.o lib/scth.o lib/cryptohash.o lib/pathfinder.o
 
-A = $(shell cat /sys/module/the_usctm/parameters/sys_call_table_address)
-B = $(shell realpath singlefile-FS/mount/the-file)
+A = $(cat /sys/module/the_usctm/parameters/sys_call_table_address)
+B = $(realpath singlefile-FS/mount/the-file)
 
 
 all:
