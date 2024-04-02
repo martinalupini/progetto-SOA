@@ -9,7 +9,7 @@
 void *start_the_monitor(void *threadID) { 
     long tid; 
     tid = (long)threadID; 
-    printf("I'm thread #%ld\n and I'm changing the monitor status to ON", tid);
+    printf("I'm thread #%ld and I'm changing the monitor status to ON\n", tid);
     
     start_monitor("changeme");
      
@@ -19,7 +19,7 @@ void *start_the_monitor(void *threadID) {
  void *stop_the_monitor(void *threadID) { 
     long tid; 
     tid = (long)threadID; 
-    printf("I'm thread #%ld\n and I'm changing the monitor status to OFF", tid);
+    printf("I'm thread #%ld and I'm changing the monitor status to OFF\n", tid);
     
     stop_monitor("changeme");
      
@@ -30,7 +30,7 @@ void *start_the_monitor(void *threadID) {
  void *recon_monitor(void *threadID) { 
     long tid; 
     tid = (long)threadID; 
-    printf("I'm thread #%ld\n and I'm changing the monitor status to REC-ON", tid);
+    printf("I'm thread #%ld and I'm changing the monitor status to REC-ON\n", tid);
     
     recon("changeme");
      
