@@ -19,11 +19,6 @@ After mounting the module, the monitor will be ON. At startup the monitor does n
 
 ## Testing the reference monitor
 
-> [!CAUTION]
-> The entries of the syscall table used for the monitor syscalls differs from kernel to kernel. To find which entries are used in your case you can look at `dmesg` after mounting the module or you type `cat /sys/module/the_reference_monitor/parameters/entry1` (there are 7 entries so entry2, entry3, etc...). 
-> 
-> After that you have to write the correct entry for your kernel in the file progetto-SOA/user/syscallsCLI/lib/refmonitor.c. 
-
 In the directory user/ you can find pieces of code for testing. After typing `make all` there will be different executables:
 - **user** is purely demonstrative. I suggest to run it as first because it shows some of the reference monitor APIs, but is not mandatory.
 The other executable are made to simulate shell commands.
@@ -34,6 +29,8 @@ The other executable are made to simulate shell commands.
 - **stop_monitor** changes the monitor status to OFF. It takes as argument the password.
 - **add_path** adds the path specified as argument to the reference monitor. The path can be absolute or relative. The other argument taken is the password.
 - **rm_path** removes the path specified as argument to the reference monitor. The path can be absolute or relative. The other argument taken is the password.
+
+In the directory test/ there is some code to stress out the module and see how it behaves.
 
 ## Project specification 
 
