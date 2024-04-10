@@ -7,7 +7,7 @@
 
 
 void *open_file(void *threadID) { 
-    tid = (long)threadID;
+    long tid = (long)threadID;
     FILE *file = fopen("file", "w"); 
     if (file == NULL) { 
         perror("Error in the opening of file"); 
