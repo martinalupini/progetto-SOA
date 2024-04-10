@@ -20,8 +20,21 @@ void *open_file(void *threadID) {
 } 
 
 
-int main() { 
+int main(int argc, char *argv[]) { 
     pthread_t threads[NUM_THREADS]; 
+    
+    if (argc != 2) { 
+        printf("Usage: ./stress_open <mode>\n\nmode is 'blocked' if you want to test on blacklisted file, 'normal' otherwise\n"); 
+        return 1; 
+    } 
+    
+    if(strcmp(argv[1], "blocked") == 0){
+    	recon("changeme");
+    	add_path("file", "changeme");
+    }else if(strcmp(argv[1], "normal") != 0){
+    	printf("Select either 'blocked' or 'normal'\n");
+    	return 0;
+    }
     
     int i, ret; 
     for (i = 0; i < NUM_THREADS; i++) { 
