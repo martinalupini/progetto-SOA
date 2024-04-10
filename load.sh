@@ -8,6 +8,10 @@ make all
 make load
 make create
 make mount-fs
+cd ../test
+make all
+cd ../user
+make all
 cd ..
 make all
 make mount
