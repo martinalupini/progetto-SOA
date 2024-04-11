@@ -32,6 +32,14 @@ The other executable are made to simulate shell commands.
 
 In the directory test/ there is some code to stress out the module and see how it behaves.
 
+## Removing the module
+
+To remove the module execute as root user in the directory Progetto-SOA/:
+
+```
+make clean
+```
+
 ## Project specification 
 
 The project specification can be found at the link: https://francescoquaglia.github.io/TEACHING/AOS/CURRENT/PROJECTS/project-specification-2023-2024.html
