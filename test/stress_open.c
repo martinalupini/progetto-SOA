@@ -34,6 +34,9 @@ int main(int argc, char *argv[]) {
     }else if(strcmp(argv[1], "normal") != 0){
     	printf("Select either 'blocked' or 'normal'\n");
     	return 0;
+    }else{
+    	recon("changeme");
+    	rm_path("file", "changeme");
     }
     
     int i, ret; 
