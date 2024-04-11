@@ -874,7 +874,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	 	return -1;
 	 }
 	 
-	 len= strlen(new);
+	 len= strlen(new)+1;
 	 try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
