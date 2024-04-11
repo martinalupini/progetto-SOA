@@ -39,13 +39,12 @@ char *encrypt(char *plaintext, size_t datasize){
 	char *ciphertext;
     	//printk("%s: Encryption started\n", LIBNAME);
     	
-    	ciphertext = kmalloc(datasize, GFP_KERNEL);
+    	ciphertext = kzalloc(datasize+2, GFP_KERNEL);
     	
     	if(ciphertext == NULL){
     		printk("%s: kmalloc cipertext failed\n", LIBNAME);
       		return NULL;
     	}
-    	memset(ciphertext, 0, datasize);
     	
   	for(i=0; i<datasize; i++){
 

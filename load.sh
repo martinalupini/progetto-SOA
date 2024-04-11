@@ -14,5 +14,5 @@ make mount
 ./create_header.sh
 cd test/
 make all
-cd user/
+cd ../user/
 make all
