@@ -18,7 +18,8 @@ unmount:
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	rmmod the_reference_monitor
-	cd singlefilefs/
+	cd singlefile-FS/
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	rm ./singlefilemakefs
 	umount ./mount/	
 	rmdir ./mount
