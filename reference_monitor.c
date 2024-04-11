@@ -501,7 +501,7 @@ __SYSCALL_DEFINEx(1, _start_monitor, char __user *, pass_user){
 	
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
-	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	ret = copy_from_user(try, pass_user, strnlen_user(pass_user, PAGE_SIZE));
 	if(ret != 0) return -1;
 	
 	spin_lock(&(monitor.lock));
@@ -553,7 +553,7 @@ __SYSCALL_DEFINEx(1, _stop_monitor, char __user *, pass_user){
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
-	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	ret = copy_from_user(try, pass_user, strnlen_user(pass_user, PAGE_SIZE));
 	if(ret != 0) return -1;
 
 	spin_lock(&(monitor.lock));
@@ -605,7 +605,7 @@ __SYSCALL_DEFINEx(1, _monitor_recon, char __user *, pass_user){
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
-	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	ret = copy_from_user(try, pass_user, strnlen_user(pass_user, PAGE_SIZE));
 	if(ret != 0) return -1;
 	
 	spin_lock(&(monitor.lock));
@@ -657,7 +657,7 @@ __SYSCALL_DEFINEx(1, _monitor_recoff, char __user *, pass_user){
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
-	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	ret = copy_from_user(try, pass_user, strnlen_user(pass_user, PAGE_SIZE));
 	if(ret != 0) return -1;
 	
 	spin_lock(&(monitor.lock));
@@ -719,7 +719,7 @@ __SYSCALL_DEFINEx(2, _add_path, char __user *, new_path, char __user *, pass_use
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
-	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	ret = copy_from_user(try, pass_user, strnlen_user(pass_user, PAGE_SIZE));
 	if(ret != 0) return -1;
 	
 	printk("%s: called sys_add_path of path %s\n", MODNAME, file_path);
@@ -798,7 +798,7 @@ __SYSCALL_DEFINEx(2, _remove_path, const char __user *, old_path, char __user *,
 	try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
-	ret = copy_from_user(try, pass_user, sizeof(pass_user)+1);
+	ret = copy_from_user(try, pass_user, strnlen_user(pass_user, PAGE_SIZE));
 	if(ret != 0) return -1;
 	
 	printk("%s: called sys_remove_path of path %s\n", MODNAME, file_path);
@@ -866,7 +866,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	
 	new = kmalloc(1024, GFP_KERNEL);
 	if(new == NULL) return -1;
-	ret = copy_from_user(new, new_pass, sizeof(new_pass)+1);
+	ret = copy_from_user(new, new_pass, strnlen_user(new_pass, PAGE_SIZE));
 	if(ret != 0) return -1;
 	
 	if(strcmp(new, "") ==0){
@@ -878,7 +878,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	 try = kmalloc(1024, GFP_KERNEL);
 	if(try ==NULL)  return -1;
 	
-	ret2 = copy_from_user(try, old_pass, sizeof(old_pass)+1);
+	ret2 = copy_from_user(try, old_pass, strnlen_user(old_pass, PAGE_SIZE));
 	
 	printk("new pass is %s, len is %ld", new, len);
 	
