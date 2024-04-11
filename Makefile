@@ -23,5 +23,16 @@ clean:
 	rmdir ./singlefile-FS/mount
 	rmmod singlefilefs
 	rm singlefile-FS/image
+	rm ./test/stress_open
+	rm ./test/test
+	rm ./test/thread
+	rm ./user/user
+	rm ./user/start_monitor
+	rm ./user/stop_monitor
+	rm ./user/recon
+	rm ./user/recoff
+	rm ./user/change_pass
+	rm ./user/add_path
+	rm ./user/rm_path
 
 	
