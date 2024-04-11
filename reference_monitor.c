@@ -932,7 +932,8 @@ int init_module(void) {
 	monitor.pass[5]= 0x07;
 	monitor.pass[6]= 0x0a;
 	monitor.pass[7]= 0x15; 
-	monitor.pass[8] = '\0';
+	monitor.pass[8]= 0x57;
+	monitor.pass[9] = '\0';
 	
 	
 	monitor.mode = ON;

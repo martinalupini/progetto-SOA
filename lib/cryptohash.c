@@ -39,14 +39,14 @@ char *encrypt(char *plaintext, size_t datasize){
 	char *ciphertext;
     	//printk("%s: Encryption started\n", LIBNAME);
     	
-    	ciphertext = kmalloc(datasize+1, GFP_KERNEL);
+    	ciphertext = kmalloc(datasize, GFP_KERNEL);
     	
     	if(ciphertext == NULL){
     		printk("%s: kmalloc cipertext failed\n", LIBNAME);
       		return NULL;
     	}
     	
-    	memset(ciphertext, 0, datasize+1);
+    	memset(ciphertext, 0, datasize);
     	
   	for(i=0; i<datasize; i++){
 
@@ -61,7 +61,7 @@ char *encrypt(char *plaintext, size_t datasize){
 
 int auth_pass(char *pass, char *real_pass){
 
-	size_t len = strlen(pass);
+	size_t len = strlen(pass)+1;
 	
 	pass = encrypt(pass, len);
 	if(pass == NULL)  return -1;
