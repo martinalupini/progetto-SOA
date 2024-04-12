@@ -11,7 +11,7 @@ make mount-fs
 cd ..
 make all
 make mount
-./create_header.sh
+make create-header
 cd test/
 make all
 cd ../user/
