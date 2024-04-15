@@ -1,7 +1,7 @@
 #include <stdio.h> 
 #include <pthread.h> 
 #include <string.h>
-#include "syscallsCLI/lib/include/refmonitor.h"
+#include "../user/syscallsCLI/lib/include/refmonitor.h"
  
 #define NUM_THREADS 100
 
@@ -13,7 +13,8 @@ void *open_file(void *threadID) {
         perror("Error in the opening of file"); 
         pthread_exit(NULL); 
     } 
- 
+    
+    printf("File successfully opened\n");
     fclose(file); 
  
     pthread_exit(NULL);

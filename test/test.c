@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "syscallsCLI/lib/include/refmonitor.h"
+#include "../user/syscallsCLI/lib/include/refmonitor.h"
 
 int main (int argc, char *argv[]) {
 
