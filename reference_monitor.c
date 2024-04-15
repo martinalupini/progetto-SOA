@@ -868,6 +868,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	len_user = strnlen_user(new_pass, PAGE_SIZE);
 	if(len_user>=32){
 		printk("%s: Password inserted is too long. Maximum 32 characters.\n", MODNAME);
+		return -1;
 	}
 	
 	new = kmalloc(1024, GFP_KERNEL);
