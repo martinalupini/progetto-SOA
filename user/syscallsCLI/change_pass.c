@@ -21,7 +21,7 @@ int main (int argc, char *argv[]) {
 	
 	ret = change_pass(argv[1], argv[2]);
 	if(ret <0){
-		printf("\033[1;31mchange_pass error: Password uncorrect or non-root user.\033[1;0m\n");
+		printf("\033[1;31mchange_pass error: Password incorrect, password too long or non-root user.\033[1;0m\n");
 	}
 	
 	return 0;

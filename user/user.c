@@ -29,7 +29,7 @@ int main (int argc, char *argv[]) {
 	printf("The monitor is now ON but no file or directory are blacklisted. Calling recon to change status to REC-ON.\n");
 	ret = recon("changeme");
 	if(ret <0){
-		printf("\033[1;31mrecon error: Password uncorrect or non-root user.\033[1;0m\n");
+		printf("\033[1;31mrecon error: Password incorrect or non-root user.\033[1;0m\n");
 	}
 	println();
 	
@@ -73,7 +73,7 @@ int main (int argc, char *argv[]) {
 	printf("Now we set the monitor status to OFF. If we call add_path we'll get an error\n");
 	ret = stop_monitor("changeme");
 	if(ret <0){
-		printf("\033[1;31mstop_monitor error: Password uncorrect or non-root user.\033[1;0m\n");
+		printf("\033[1;31mstop_monitor error: Password incorrect or non-root user.\033[1;0m\n");
 	}
 	ret = add_path("prova", "changeme");
 	if(ret <0){
@@ -86,7 +86,7 @@ int main (int argc, char *argv[]) {
 	printf("Now we set euid to user 1000. If we try to start the monitor we'll get an error because is not called by the root user\n");
 	ret = recon("changeme");
 	if(ret <0){
-		printf("\033[1;31mstart_monitor error: Password uncorrect or non-root user.\033[1;0m\n");
+		printf("\033[1;31mstart_monitor error: Password incorrect or non-root user.\033[1;0m\n");
 	}
 	println();
 	

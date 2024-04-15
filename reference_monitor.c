@@ -850,6 +850,7 @@ __SYSCALL_DEFINEx(2, _remove_path, const char __user *, old_path, char __user *,
 * returns -1 if one of the following conditions is met: 
 * -the new password provided is an empty string
 * -the old password is incorrect
+* -the password exceeds the limit of 32 characters
 *
 * 0 is returned otherwise
 *
@@ -860,16 +861,21 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	int ret;
 	char *try;
 	int ret2;
+	int len_user;
 	
 	printk("%s: called sys_change_pass\n", MODNAME);
 	
+	len_user = strnlen_user(new_pass, PAGE_SIZE);
+	if(len_user>=32){
+		printk("%s: Password inserted is too long. Maximum 32 characters.\n", MODNAME);
+	}
 	
 	new = kmalloc(1024, GFP_KERNEL);
 	if(new == NULL) return -1;
-	ret = copy_from_user(new, new_pass, strnlen_user(new_pass, PAGE_SIZE));
+	ret = copy_from_user(new, new_pass, len_user);
 	if(ret != 0) return -1;
 	
-	if(strcmp(new, "") ==0){
+	if(strcmp(new, "") ==0 || ){
 		kfree(new);
 	 	return -1;
 	 }
@@ -879,8 +885,6 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	if(try ==NULL)  return -1;
 	
 	ret2 = copy_from_user(try, old_pass, strnlen_user(old_pass, PAGE_SIZE));
-	
-	printk("new pass is %s, len is %ld", new, len);
 	
 	spin_lock(&(monitor.lock));
 	
@@ -895,7 +899,6 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	new = encrypt(new, len);
 	if(new == NULL) return -1;
 	memcpy(monitor.pass, new, len+1);
-	printk("encryption is %s and copied is %s", new, monitor.pass);
 	
 	spin_unlock(&(monitor.lock));
 	

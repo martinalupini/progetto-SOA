@@ -21,7 +21,7 @@ int main (int argc, char *argv[]) {
 	
 	ret = recon(argv[1]);
 	if(ret <0){
-		printf("\033[1;31mrecon error: Password uncorrect or non-root user.\033[1;0m\n");
+		printf("\033[1;31mrecon error: Password incorrect or non-root user.\033[1;0m\n");
 	}
 	
 	return 0;
