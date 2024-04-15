@@ -875,7 +875,7 @@ __SYSCALL_DEFINEx(2, _change_pass, char __user *, new_pass, char __user *, old_p
 	ret = copy_from_user(new, new_pass, len_user);
 	if(ret != 0) return -1;
 	
-	if(strcmp(new, "") ==0 || ){
+	if(strcmp(new, "") ==0){
 		kfree(new);
 	 	return -1;
 	 }
