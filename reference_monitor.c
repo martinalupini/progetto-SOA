@@ -102,6 +102,7 @@ void register_access(unsigned long input){
     	ret = kernel_read(exe, buf, 204800, &pos);
     	hash = sha256(buf, ret);
     	bin2hex(hash_string, hash, HASHSIZE);
+    	hash_string[HASHSIZE*2] = '\0';
     	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s Hash exe file content: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm, hash_string);
     	
     	
