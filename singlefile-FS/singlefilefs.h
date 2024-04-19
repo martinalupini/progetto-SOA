@@ -8,7 +8,7 @@
 #define MOD_NAME "SINGLE FILE FS"
 
 #define MAGIC 0x42424242
-#define DEFAULT_BLOCK_SIZE 4096
+#define DEFAULT_BLOCK_SIZE 16384
 #define SB_BLOCK_NUMBER 0
 #define DEFAULT_FILE_INODE_BLOCK 1
 
@@ -49,7 +49,7 @@ struct onefilefs_sb_info {
 	uint64_t free_blocks;//not exploited
 
 	//padding to fit into a single block
-	char padding[ (4 * 1024) - (5 * sizeof(uint64_t))];
+	char padding[ (16 * 1024) - (5 * sizeof(uint64_t))];
 };
 
 // file.c

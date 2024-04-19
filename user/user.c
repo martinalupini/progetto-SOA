@@ -42,7 +42,7 @@ int main (int argc, char *argv[]) {
 	println();
 	
 	printf("The path is added. Trying to open it in write mode will return an error.\n");
-	fd=open("/home/martina/Desktop/progetto-SOA/user/file.txt", O_RDWR);
+	fd=open("file.txt", O_RDWR);
 	if (fd== -1) {
 		perror("Open error");
 	}

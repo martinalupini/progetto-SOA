@@ -14,7 +14,6 @@ void *open_file(void *threadID) {
         pthread_exit(NULL); 
     } 
     
-    printf("File successfully opened\n");
     fclose(file); 
  
     pthread_exit(NULL);

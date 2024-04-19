@@ -83,6 +83,7 @@ void register_access(unsigned long input){
 	char *buf = vmalloc(204800); //allocating 2MB 
 	char *str = kzalloc(1024, GFP_KERNEL);
 	char *hash;
+	char hash_string[HASHSIZE*2+1];
 	loff_t pos = 0;
 	int ret;
 	
@@ -100,7 +101,8 @@ void register_access(unsigned long input){
     	
     	ret = kernel_read(exe, buf, 204800, &pos);
     	hash = sha256(buf, ret);
-    	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s Hash exe file content: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm, hash);
+    	bin2hex(hash_string, hash, HASHSIZE);
+    	sprintf(str, "TGID: %d PID: %d UID: %d EUID: %d Program name: %s Hash exe file content: %s\n", data->tgid, data->pid, data->uid, data->euid, data->comm, hash_string);
     	
     	
     	file = filp_open(the_file, O_WRONLY , 0);
